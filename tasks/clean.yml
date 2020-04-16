@@ -1,0 +1,5 @@
+---
+- name: Run shell script
+  script: clean-template.sh {{ old_host }} {{ new_host}}
+
+ 

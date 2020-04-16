@@ -1,0 +1,14 @@
+- name: Disable cloud-init's network configuration capabilities
+  copy: 
+    src: ./files/99-disable-network-config.cfg
+    dest: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+
+- name: Assign static IP to eth0
+  copy:
+    src: ./files/50-cloud-init.yaml
+    dest: /etc/netplan/50-cloud-init.yaml
+  register: eth
+
+- name: Apply netplan configuration
+  command: netplan apply
+  when: eth is changed
