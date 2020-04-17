@@ -1,5 +1,5 @@
 ---
-- name: Set the java_packages variable (Debian).
-  set_fact:
-    java_packages:
-      - openjdk-11-jdk
+- name: Ensure Java is installed.
+  apt:
+    name: openjdk-11-jdk
+    state: present
