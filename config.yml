@@ -1,4 +1,4 @@
 ---
-new_host: jenkins-2
+new_host: k8s-node-2
 user: andrew
-static_ip: 192.168.1.191/24
+static_ip: 192.168.1.194/24
