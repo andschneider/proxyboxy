@@ -1,0 +1,9 @@
+---
+- hosts: nfs
+  user: andrew
+
+  vars_files:
+    - config.yml
+
+  tasks:
+    - include_tasks: tasks/nfs.yml

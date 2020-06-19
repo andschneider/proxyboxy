@@ -1,0 +1,30 @@
+---
+- name: Install NFS dependencies
+  apt:
+    name:
+      - nfs-kernel-server
+    state: present
+    update_cache: yes
+
+- name: Create exported directories
+  file: 'path="{{ item.strip().split()[0] }}" state=directory'
+  with_items: "{{ nfs_exports }}"
+
+  # TODO change directories to nobody:nogroup and make sure they have write permission
+
+- name: Create exports file
+  template:
+    src: ./templates/exports.j2
+    dest: /etc/exports
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Export directories
+  command: 'exportfs -a'
+  
+- name: Ensure NFS nfs-kernel-server is enabled
+  service:
+    name: nfs-kernel-server
+    state: started
+    enabled: yes
