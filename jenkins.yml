@@ -1,0 +1,13 @@
+---
+- hosts: jenkins
+  user: andrew
+
+  vars:
+    user: andrew
+    new_host: jenkins
+
+  tasks:
+    - include_tasks: tasks/java-11.yml
+    - include_tasks: tasks/jenkins.yml
+    - include_tasks: tasks/docker.yml
+    - include_tasks: tasks/host-name.yml

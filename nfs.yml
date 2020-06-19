@@ -2,8 +2,8 @@
 - hosts: nfs
   user: andrew
 
-  vars_files:
-    - config.yml
+  vars:
+    nfs_exports : [ "/export/nfs/prox 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)", "/export/nfs/general 192.168.1.0/24(rw,sync,no_subtree_check)" ]
 
   tasks:
     - include_tasks: tasks/nfs.yml

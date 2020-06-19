@@ -2,5 +2,3 @@
 new_host: nfs
 user: andrew
 static_ip: 192.168.1.200/24
-
-nfs_exports : [ "/export/nfs/prox 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)", "/export/nfs/general 192.168.1.0/24(rw,sync,no_subtree_check)" ]
