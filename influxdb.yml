@@ -1,0 +1,11 @@
+---
+- hosts: influx
+  user: andrew
+
+  vars:
+    new_host: influx-1
+    ubuntu_code_name: bionic
+
+  tasks:
+    - include_tasks: tasks/influx.yml
+    - include_tasks: tasks/updates.yml

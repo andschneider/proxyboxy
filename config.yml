@@ -1,4 +1,0 @@
----
-new_host: nfs
-user: andrew
-static_ip: 192.168.1.200/24

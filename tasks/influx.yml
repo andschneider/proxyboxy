@@ -1,0 +1,24 @@
+---
+- name: Get InfluxDB apt key
+  apt_key: 
+    url: https://repos.influxdata.com/influxdb.key 
+    state: present
+
+- name: Add InfluxDB repository
+  apt_repository:
+    repo: deb https://repos.influxdata.com/ubuntu {{ ubuntu_code_name }} stable
+    state: present
+    update_cache: true
+
+- name: Install InfluxDB
+  apt:
+    name: influxdb
+
+- name: Start and enable service
+  service:
+    name: influxdb
+    state: started
+    enabled: yes
+
+- name: Change timezone to PCT
+  command: "timedatectl set-timezone America/Los_Angeles"

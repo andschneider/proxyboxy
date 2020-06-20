@@ -9,6 +9,12 @@
     dest: /etc/netplan/50-cloud-init.yaml
   register: eth
 
+# TODO not sure if this from cloud-init or actually a default file
+- name: Remove default file in Ubuntu 20.04
+  file: 
+    path: /etc/netplan/00-installer-config.yaml
+    state: absent
+
 - name: Apply netplan configuration
   command: netplan apply
   when: eth is changed
