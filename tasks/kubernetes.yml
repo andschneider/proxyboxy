@@ -1,0 +1,21 @@
+---
+# TODO add key https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#installing-kubeadm-kubelet-and-kubectl
+- name: Install required packages for Kubernetes
+  apt:
+    update_cache: yes
+    autoclean : yes
+    name: 
+    - apt-transport-https
+    - curl
+
+- name: Install Kubernetes
+  apt:
+    update_cache: yes
+    autoclean : yes
+    name: 
+    - "kubelet={{ k8s_version }}"
+    - "kubeadm={{ k8s_version }}"
+    - "kubectl={{ k8s_version }}"
+
+- name: Prevent updates to packages
+  command: apt-mark hold kubelet kubeadm kubectl

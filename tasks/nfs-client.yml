@@ -1,0 +1,6 @@
+- name: Install nfs kernel
+  apt:
+    name:
+      - nfs-common
+      - nfs-kernel-server
+    state: present
