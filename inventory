@@ -12,3 +12,18 @@
 
 [k8s-node]
 192.168.1.194
+
+[k8s-master]
+192.168.1.150
+
+[k8s-nodes]
+192.168.1.193
+192.168.1.194
+192.168.1.195
+
+[updates:children]
+nfs
+jenkins
+influx
+k8s-master
+k8s-nodes

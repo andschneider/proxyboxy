@@ -6,7 +6,8 @@
     state: latest
     update_cache: yes
 
-- name: Reboot time
-  become: yes
-  reboot:
-    reboot_timeout: 600
+# TODO make this run if specified in playbook
+# - name: Reboot time
+#   become: yes
+#   reboot:
+#     reboot_timeout: 600
