@@ -1,0 +1,15 @@
+---
+- hosts: influx
+  user: andrew
+  become: yes
+
+  vars:
+    ansible_ssh_private_key_file: "~/.ssh/pri/ssh-privatekey"
+    # TODO use ansible value instead
+    ansible_become_password: REDACTED
+
+  tasks:
+    - name: Reboot time
+      become: yes
+      reboot:
+        reboot_timeout: 600
