@@ -1,9 +1,6 @@
-FROM ubuntu:18.04
+FROM alpine:3.12
 
-RUN apt update && apt -y upgrade && \
-    apt install -y software-properties-common && \
-    apt-add-repository --yes --update ppa:ansible/ansible && \
-    apt install -y ansible
+RUN apk add --no-cache ansible openssh
 
 WORKDIR /app
 ENV ANSIBLE_HOST_KEY_CHECKING=False
