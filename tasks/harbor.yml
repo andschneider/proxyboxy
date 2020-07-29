@@ -1,0 +1,32 @@
+---
+- name: Download Harbor installer
+  get_url:
+    # TODO add version as variable
+    url: https://github.com/goharbor/harbor/releases/download/v2.0.1/harbor-online-installer-v2.0.1.tgz
+    dest: /tmp/harbor.tar.gz
+
+# TODO
+#- name: Verify GPG key
+
+- name: Unzip installer
+  unarchive:
+    remote_src: yes
+    src: /tmp/harbor.tar.gz
+    dest: /tmp
+
+- name: Copy Harbor config file
+  copy:
+    src: ./files/harbor.yml.tmpl
+    dest: /tmp/harbor/harbor.yml
+
+- name: Run Harbor installer
+  shell: ./install.sh
+  args:
+    chdir: /tmp/harbor
+
+- name: Copy Docker daemon file
+  copy:
+    src: ./files/docker-daemon.json
+    dest: /etc/docker/daemon.json
+
+# TODO restart docker and docker compose
