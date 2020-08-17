@@ -16,10 +16,20 @@ Install Harbor container registry on a VM.
 
 ### TODO
 
-- [ ] use https
-- [ ] check that rebooting server doesn't kill harbor
-- [ ] check docker and docker-compose restart and http docker login works
-- [ ] convert files to templates and use IP address as variable
+- [X] use https
+- [X] check that rebooting server doesn't kill harbor
+- [ ] convert files to templates and use host as variable (create-certs.sh, harbor-template.yml)
+- [ ] create a system service for harbor docker-compose file
+- [ ] add scanning capabilities
+- [ ] copy back ca.crt to client
+
+Copy ca.crt to local client machine which needs to use Harbor.
+```bash
+get /tmp/certs/ca.crt
+sudo mv ca.crt /usr/local/share/ca-certificates/ca.crt
+sudo update-ca-certificates
+sudo systemctl restart docker.service
+```
 
 ```bash
 ansible-playbook -i inventory harbor.yml -Kb -v

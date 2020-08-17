@@ -3,8 +3,8 @@
   user: andrew
 
   vars:
-    new_host: harbor-1
-    static_ip: 192.168.1.211/24
+    new_host: harbor-2
+    static_ip: 192.168.1.212/24
 
   tasks:
     - include_tasks: tasks/clean.yml

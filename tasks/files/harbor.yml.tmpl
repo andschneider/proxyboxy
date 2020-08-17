@@ -3,21 +3,20 @@
 # The IP address or hostname to access admin UI and registry service.
 # DO NOT use localhost or 127.0.0.1, because Harbor needs to be accessed by external clients.
 
-# TODO this should be set from the ansible ip address
-hostname: 192.168.1.211
+hostname: "reg.andrew-net.com"
 
 # http related config
-http:
+# http:
   # port for http, default is 80. If https enabled, this port will redirect to https port
-  port: 80
+  # port: 80
 
 # https related config
-# https:
+https:
   # https port for harbor, default is 443
-  # port: 443
+  port: 443
   # The path of cert and key files for nginx
-  # certificate: /your/certificate/path
-  # private_key: /your/private/key/path
+  certificate: /etc/docker/certs.d/reg.andrew-net.com/reg.andrew-net.com.cert
+  private_key: /etc/docker/certs.d/reg.andrew-net.com/reg.andrew-net.com.key
 
 # # Uncomment following will enable tls communication between all harbor components
 # internal_tls:

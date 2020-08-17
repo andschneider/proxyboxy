@@ -3,16 +3,38 @@
   get_url:
     # TODO add version as variable
     url: https://github.com/goharbor/harbor/releases/download/v2.0.1/harbor-online-installer-v2.0.1.tgz
-    dest: /tmp/harbor.tar.gz
+    #    url: "https://github.com/goharbor/harbor/releases/download/v{{ harbor_version }}/harbor-online-installer-v{{ harbor_version }}.tgz"
+    dest: /tmp/harbor-2.0.1.tar.gz
 
 # TODO
 #- name: Verify GPG key
-
+#
 - name: Unzip installer
   unarchive:
     remote_src: yes
-    src: /tmp/harbor.tar.gz
+    src: /tmp/harbor-2.0.1.tar.gz
     dest: /tmp
+
+- name: Make cert directory
+  file:
+    path: /tmp/certs
+    state: directory
+    mode: '0755'
+
+- name: Generate certs
+  script: create-harbor-certs.sh
+  args:
+    chdir: /tmp/certs
+
+- name: Restart Docker engine
+  service:
+    name: docker
+    state: restarted
+
+#- name: Remove cert directory
+#  file:
+#    path: /tmp/cert
+#    state: absent
 
 - name: Copy Harbor config file
   copy:
@@ -23,10 +45,3 @@
   shell: ./install.sh
   args:
     chdir: /tmp/harbor
-
-- name: Copy Docker daemon file
-  copy:
-    src: ./files/docker-daemon.json
-    dest: /etc/docker/daemon.json
-
-# TODO restart docker and docker compose
