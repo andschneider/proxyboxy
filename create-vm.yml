@@ -1,0 +1,13 @@
+---
+- hosts: prox
+  user: root
+
+  vars:
+    vm_id: 501
+    vm_name: proxyboiiii
+    # TODO use vault or something
+    pxmx_pw: REDACTED
+
+  tasks:
+    - include_tasks: tasks/pxmx-vm.yml
+

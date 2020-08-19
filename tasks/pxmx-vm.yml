@@ -1,0 +1,24 @@
+---
+- name: Clone a template to create a new vm.
+  proxmox_kvm:
+    api_user: root@pam
+    api_password: "{{ pxmx_pw }}"
+    # TODO can this be from the inventory?
+    api_host: 192.168.1.224
+    clone: Ubuntu-20.04.1-20200814
+    vmid: 1002
+    newid: "{{ vm_id }}"
+    name: "{{ vm_name }}"
+    node: adi
+    storage: mpool
+    format: qcow2
+    timeout: 700
+
+- name: Start the vm.
+  proxmox_kvm:
+    api_user: root@pam
+    api_password: "{{ pxmx_pw }}"
+    api_host: 192.168.1.224
+    name: "{{ vm_name }}"
+    node: adi
+    state: started
