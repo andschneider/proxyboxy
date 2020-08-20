@@ -34,3 +34,20 @@ sudo systemctl restart docker.service
 ```bash
 ansible-playbook -i inventory harbor.yml -Kb -v
 ```
+
+## proxmox vm clone
+
+Clone a template and create a new VM.
+
+### TODO 
+
+- [ ] clean up inventory and variables
+- [ ] make sure templates have guest agent installed (cleanup templates)
+- [ ] fix DNS issue
+- [ ] setup vault for password
+- [ ] clean up ssh password usage (set default private key or something)
+- [ ] create a stop and remove playbook
+
+```bash
+ansible-playbook -i clone-inventory create-vm.yml -Kbv --ask-pass
+```

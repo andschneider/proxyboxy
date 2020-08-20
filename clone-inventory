@@ -1,0 +1,11 @@
+[prox]
+192.168.1.224
+
+[prox:vars]
+ansible_python_interpreter=/usr/bin/python3
+
+[clone]
+192.168.1.223
+
+[new-static]
+192.168.1.219 ansible_ssh_private_key_file=/home/andrew/.ssh/prox_ed25519

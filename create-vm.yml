@@ -3,11 +3,43 @@
   user: root
 
   vars:
-    vm_id: 501
-    vm_name: proxyboiiii
+    clone_name: Ubuntu-20.04-20200819
+    clone_id: 1004
+#    clone_name: Ubuntu-20.04.1-20200819
+#    clone_id: 1003
+    new_vm_id: 508
+    new_vm_name: asdfasdf
+    storage: mpool
     # TODO use vault or something
     pxmx_pw: REDACTED
 
   tasks:
     - include_tasks: tasks/pxmx-vm.yml
+
+- hosts: clone
+  user: andrew
+
+  vars:
+    new_host: temp2
+    # TODO can this come from inventory?
+    static_ip: 192.168.1.219/24
+
+  tasks:
+    - include_tasks: tasks/clean.yml
+    - include_tasks: tasks/host-name.yml
+    - include_tasks: tasks/static-ip.yml
+#    - include_tasks: tasks/dhcp-ip.yml
+
+- name: update and reboot
+  hosts: new-static
+  user: andrew
+
+  vars:
+    static: true
+
+  tasks:
+    - include_tasks: tasks/updates.yml
+      when: static
+    - include_tasks: tasks/reboot.yml
+      when: static
 

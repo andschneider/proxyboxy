@@ -30,9 +30,3 @@ jenkins
 influx
 k8s-master
 k8s-nodes
-
-[prox]
-192.168.1.224
-
-[prox:vars]
-ansible_python_interpreter=/usr/bin/python3
