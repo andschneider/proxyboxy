@@ -1,11 +1,14 @@
 [newvm]
-192.168.1.85
+192.168.1.176
 
 [nfs]
 192.168.1.200
 
 [jenkins]
 192.168.1.190
+
+[postgres]
+192.168.1.209
 
 [influx]
 192.168.1.210
@@ -27,6 +30,7 @@
 [updates:children]
 nfs
 jenkins
+postgres
 influx
 k8s-master
 k8s-nodes

@@ -1,0 +1,12 @@
+---
+- hosts: postgres
+  user: andrew
+
+  vars:
+    new_host: postgres-1
+    ubuntu_code_name: focal
+    postgres_version: 12
+
+  tasks:
+#    - include_tasks: tasks/updates.yml
+    - include_tasks: tasks/postgres.yml

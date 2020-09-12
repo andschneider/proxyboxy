@@ -1,0 +1,21 @@
+---
+- name: Get PostgreSQL apt key
+  apt_key:
+    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    state: present
+
+- name: Add PostgreSQL repository
+  apt_repository:
+    repo: deb http://apt.postgresql.org/pub/repos/apt {{ ubuntu_code_name }}-pgdg main
+    state: present
+    update_cache: true
+
+- name: Install PostgreSQL
+  apt:
+    name: "postgresql-{{ postgres_version }}"
+
+- name: Start and enable service
+  service:
+    name: postgresql
+    state: started
+    enabled: yes

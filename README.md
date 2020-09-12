@@ -52,6 +52,16 @@ Clone a template and create a new VM.
 ansible-playbook -i clone-inventory create-vm.yml -Kbv --ask-pass
 ```
 
+## postgres
+
+```bash
+ansible-playbook -i inventory postgres.yml -Kb -v
+```
+
+### TODO
+
+- [ ] ensure options are set correctly (localization, ect.)
+
 ### linting
 
 Linting is done using `ansible-lint`, which can be pip installed.
