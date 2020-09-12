@@ -4,7 +4,7 @@
   apt:
     update_cache: yes
     autoclean : yes
-    name: 
+    name:
     - apt-transport-https
     - curl
 
@@ -12,7 +12,7 @@
   apt:
     update_cache: yes
     autoclean : yes
-    name: 
+    name:
     - "kubelet={{ k8s_version }}"
     - "kubeadm={{ k8s_version }}"
     - "kubectl={{ k8s_version }}"

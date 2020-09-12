@@ -18,7 +18,7 @@
     state: present
     update_cache: true
 
-- name: Install Jenkins 
+- name: Install Jenkins
   apt:
     name: jenkins
     state: present

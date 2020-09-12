@@ -4,7 +4,7 @@
   apt:
     update_cache: yes
     autoclean : yes
-    name: 
+    name:
     - apt-transport-https
     - ca-certificates
     - curl
@@ -13,7 +13,7 @@
 
 - name: Add Docker's GPG key
   apt_key:
-    url: https://download.docker.com/linux/ubuntu/gpg 
+    url: https://download.docker.com/linux/ubuntu/gpg
     state: present
 
 - name: Add repo for 20.04 Ubuntu
@@ -25,7 +25,7 @@
   apt:
     update_cache: yes
     autoclean : yes
-    name: 
+    name:
     - containerd.io
     - "docker-ce={{ docker_version }}"
     - "docker-ce-cli={{ docker_version }}"

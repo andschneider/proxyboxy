@@ -6,7 +6,7 @@
 
 # TODO not sure if this from cloud-init or actually a default file
 - name: Remove default file in Ubuntu 20.04
-  file: 
+  file:
     path: /etc/netplan/00-installer-config.yaml
     state: absent
 

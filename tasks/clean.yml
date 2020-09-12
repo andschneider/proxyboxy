@@ -1,4 +1,4 @@
 ---
 - name: Run shell script
-  script: clean-template.sh 
- 
+  script: clean-template.sh
+

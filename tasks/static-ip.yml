@@ -1,5 +1,5 @@
 - name: Disable cloud-init's network configuration capabilities
-  copy: 
+  copy:
     src: ./files/99-disable-network-config.cfg
     dest: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
 
@@ -11,7 +11,7 @@
 
 # TODO not sure if this from cloud-init or actually a default file
 - name: Remove default file in Ubuntu 20.04
-  file: 
+  file:
     path: /etc/netplan/00-installer-config.yaml
     state: absent
 

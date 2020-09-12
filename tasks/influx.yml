@@ -1,7 +1,7 @@
 ---
 - name: Get InfluxDB apt key
-  apt_key: 
-    url: https://repos.influxdata.com/influxdb.key 
+  apt_key:
+    url: https://repos.influxdata.com/influxdb.key
     state: present
 
 - name: Add InfluxDB repository

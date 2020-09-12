@@ -22,7 +22,7 @@
 
 - name: Export directories
   command: 'exportfs -a'
-  
+
 - name: Ensure NFS nfs-kernel-server is enabled
   service:
     name: nfs-kernel-server
