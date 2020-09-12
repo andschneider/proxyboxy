@@ -51,3 +51,9 @@ Clone a template and create a new VM.
 ```bash
 ansible-playbook -i clone-inventory create-vm.yml -Kbv --ask-pass
 ```
+
+### linting
+
+Linting is done using `ansible-lint`, which can be pip installed.
+
+- [ ] Add Github action to run linting
