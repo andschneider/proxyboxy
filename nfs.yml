@@ -2,8 +2,9 @@
 - hosts: nfs
   user: andrew
 
+  # TODO this var should be defined in the inventory file along side the nfs target
   vars:
-    nfs_exports : [ "/export/nfs/prox 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)", "/export/nfs/general 192.168.1.0/24(rw,sync,no_subtree_check)" ]
+    nfs_exports : [ "/export/nfs 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash) 192.168.17.0/24(rw,sync,no_subtree_check,no_root_squash)" ]
 
   tasks:
     - include_tasks: tasks/nfs.yml

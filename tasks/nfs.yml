@@ -6,11 +6,14 @@
     state: present
     update_cache: yes
 
+# TODO need to set up the disk first:
+  # - format mounted disk to ext4 and mount to /export/nfs
+  # - add entry to /etc/fstab
+  # - change directories to nobody:nogroup and 777
+
 - name: Create exported directories
   file: 'path="{{ item.strip().split()[0] }}" state=directory'
   with_items: "{{ nfs_exports }}"
-
-  # TODO change directories to nobody:nogroup and make sure they have write permission
 
 - name: Create exports file
   template:

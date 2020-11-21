@@ -1,15 +1,9 @@
-- name: Disable cloud-init's network configuration capabilities
-  copy:
-    src: ./files/99-disable-network-config.cfg
-    dest: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
-
-- name: Assign static IP to eth0
+- name: Copy over netplan config
   template:
-    src: ./templates/50-cloud-init.j2
-    dest: /etc/netplan/50-cloud-init.yaml
+    src: ./templates/00-static-ip.j2
+    dest: /etc/netplan/00-static-ip.yaml
   register: eth
 
-# TODO not sure if this from cloud-init or actually a default file
 - name: Remove default file in Ubuntu 20.04
   file:
     path: /etc/netplan/00-installer-config.yaml

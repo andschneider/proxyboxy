@@ -3,8 +3,8 @@
   user: andrew
 
   vars:
-    new_host: postgres-1
-    static_ip: 192.168.1.209/24
+    new_host: nfs-1
+    static_ip: 192.168.17.150/24
 
   tasks:
     - include_tasks: tasks/clean.yml
