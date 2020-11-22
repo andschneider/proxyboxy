@@ -1,0 +1,19 @@
+- name: Copy over netplan config
+  template:
+    src: 00-static-ip.j2
+    dest: /etc/netplan/00-ansible-init.yaml
+  when: set_static
+  notify: apply netplan configuration
+
+# TODO can this be combined with the static?
+- name: Let ens18 use DHCP
+  template:
+    src: 01-dhcp-init.j2
+    dest: /etc/netplan/00-ansible-init.yaml
+  when: not set_static
+  notify: apply netplan configuration
+
+- name: Remove default file in Ubuntu 20.04
+  file:
+    path: /etc/netplan/00-installer-config.yaml
+    state: absent

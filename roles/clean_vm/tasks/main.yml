@@ -1,4 +1,5 @@
 ---
 - include: clean.yml
 - include: host-name.yml
-- include: static-ip.yml
+- include: config-ip.yml
+- include: updates.yml
