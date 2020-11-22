@@ -1,0 +1,4 @@
+---
+- include: clean.yml
+- include: host-name.yml
+- include: static-ip.yml

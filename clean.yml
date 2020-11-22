@@ -2,12 +2,12 @@
 - hosts: newvm
   user: andrew
 
+  #  TODO would be cool to have an option to specify static or dhcp
   vars:
-    new_host: nfs-1
-    static_ip: 192.168.17.150/24
+    new_host: unifi
+    static_ip: 192.168.1.160/24
+    gateway: 192.168.1.1
+    nameservers: [ 192.168.1.5, 1.1.1.1 ]
 
-  tasks:
-    - include_tasks: tasks/clean.yml
-    - include_tasks: tasks/host-name.yml
-    - include_tasks: tasks/static-ip.yml
-
+  roles:
+    - clean_vm

@@ -19,6 +19,8 @@
 - hosts: clone
   user: andrew
 
+  # TODO might be helpful: https://docs.ansible.com/ansible/latest/collections/ansible/builtin/add_host_module.html
+
   vars:
     new_host: temp2
     # TODO can this come from inventory?

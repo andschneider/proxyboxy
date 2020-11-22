@@ -1,6 +1,6 @@
 - name: Copy over netplan config
   template:
-    src: ./templates/00-static-ip.j2
+    src: 00-static-ip.j2
     dest: /etc/netplan/00-static-ip.yaml
   register: eth
 
