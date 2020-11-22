@@ -1,5 +1,6 @@
 ---
+- include: updates.yml
 - include: clean.yml
 - include: host-name.yml
 - include: config-ip.yml
-- include: updates.yml
+- include: reboot.yml

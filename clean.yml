@@ -3,13 +3,13 @@
   user: andrew
 
   vars:
-    new_host: trash1
-    set_static: true
+    new_host: yeet
+    updates: false
+    set_static: false
     static_ip: 192.168.1.161/24
     gateway: 192.168.1.1
     nameservers: [ 192.168.1.5, 1.1.1.1 ]
-    updates: false
-    reboot: true # note that if set_static is true this will hang
+    reboot: false # note that if true, ansible can't reconnect to the host
 
   roles:
     - clean_vm

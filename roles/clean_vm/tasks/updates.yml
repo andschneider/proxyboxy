@@ -1,14 +1,8 @@
 ---
-- name: Update all system packages
+- name: Update all system packages.
   become: yes
   when: updates
   apt:
     name: "*"
     state: latest
     update_cache: yes
-
-- name: Reboot time
-  become: yes
-  when: reboot
-  reboot:
-    reboot_timeout: 600
