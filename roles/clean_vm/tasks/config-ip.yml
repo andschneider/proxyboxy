@@ -1,0 +1,26 @@
+- name: Configure static IP.
+  template:
+    src: 00-static-ip.j2
+    dest: /etc/netplan/00-ansible-init.yaml
+  when: set_static
+  register: apply
+
+# TODO can this be combined with the static?
+#  -> use variable "static" or "dhcp" instead of set_static boolean
+- name: Configure DHCP.
+  template:
+    src: 01-dhcp-ip.j2
+    dest: /etc/netplan/00-ansible-init.yaml
+  when: not set_static
+  register: apply
+
+- name: Remove default file in Ubuntu 20.04.
+  file:
+    path: /etc/netplan/00-installer-config.yaml
+    state: absent
+
+# TODO is there a better way to do this? run no command but call a handler
+- name: Apply configuration if the VM won't be rebooted.
+  command: ip a
+  when: apply and not reboot
+  notify: apply netplan configuration

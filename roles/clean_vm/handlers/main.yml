@@ -1,0 +1,10 @@
+---
+- name: apply netplan configuration
+  command: netplan apply
+  async: 45
+  poll: 0
+  notify: pause for apply
+
+- name: pause for apply
+  pause:
+    seconds: 5

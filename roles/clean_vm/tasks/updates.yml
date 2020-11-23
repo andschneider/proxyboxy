@@ -1,0 +1,8 @@
+---
+- name: Update all system packages.
+  become: yes
+  when: updates
+  apt:
+    name: "*"
+    state: latest
+    update_cache: yes

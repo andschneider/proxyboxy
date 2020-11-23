@@ -3,11 +3,13 @@
   user: andrew
 
   vars:
-    new_host: nfs-1
-    static_ip: 192.168.17.150/24
+    new_host: yeet
+    updates: false
+    set_static: false
+    static_ip: 192.168.1.161/24
+    gateway: 192.168.1.1
+    nameservers: [ 192.168.1.5, 1.1.1.1 ]
+    reboot: false # note that if true, ansible can't reconnect to the host
 
-  tasks:
-    - include_tasks: tasks/clean.yml
-    - include_tasks: tasks/host-name.yml
-    - include_tasks: tasks/static-ip.yml
-
+  roles:
+    - clean_vm

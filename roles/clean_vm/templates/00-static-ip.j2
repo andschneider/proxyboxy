@@ -4,6 +4,6 @@ network:
     ens18:
       addresses:
         - "{{ static_ip }}"
-      gateway4: 192.168.17.1
+      gateway4: "{{ gateway }}"
       nameservers:
-        addresses: [192.168.17.1, 1.1.1.1]
+        addresses: {{ nameservers }}

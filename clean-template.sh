@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# TODO turn into playbook
+
 # cleans a freshly cloned VM template
 
 # change machine-id

@@ -6,5 +6,5 @@
 
 - name: Change hosts
   template:
-    src: ./templates/hosts.j2
+    src: hosts.j2
     dest: /etc/hosts
