@@ -1,10 +1,10 @@
 [newvm]
-192.168.1.157
+192.168.17.17
 
 [nfs]
 192.168.17.150
 
-[nfs-k8s]
+[nfs_k8s]
 192.168.17.151
 
 [jenkins]
@@ -17,15 +17,15 @@
 192.168.1.210
 
 [harbor]
-192.168.1.212
+192.168.17.170
 
-[k8s-node]
+[k8s_node]
 192.168.1.194
 
-[k8s-master]
+[k8s_master]
 192.168.1.150
 
-[k8s-nodes]
+[k8s_nodes]
 192.168.1.193
 192.168.1.194
 192.168.1.195
@@ -35,5 +35,5 @@ nfs
 jenkins
 postgres
 influx
-k8s-master
-k8s-nodes
+k8s_master
+k8s_nodes
