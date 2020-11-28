@@ -7,33 +7,26 @@ proxmox
 Used to reset a fresh VM clone.
 
 ```bash
-ansible-playbook -i inventory clean.yml -Kb -v
+make clean-vm
 ```
 
 ## harbor
 
-Install Harbor container registry on a VM.
+Install Harbor container registry on a VM with `make harbor`.
+
+To download the cert to the local machine, use `make get-harbor-certs`. See the Makefile for how to update Docker to use it.
 
 ### TODO
 
 - [X] use https
-- [X] check that rebooting server doesn't kill harbor
-- [ ] convert files to templates and use host as variable (create-certs.sh, harbor-template.yml)
-- [ ] create a system service for harbor docker-compose file
-- [ ] add scanning capabilities
-- [ ] copy back ca.crt to client
-
-Copy ca.crt to local client machine which needs to use Harbor.
-```bash
-get /tmp/certs/ca.crt
-sudo mv ca.crt /usr/local/share/ca-certificates/ca.crt
-sudo update-ca-certificates
-sudo systemctl restart docker.service
-```
-
-```bash
-ansible-playbook -i inventory harbor.yml -Kb -v
-```
+- [X] check that rebooting server doesn't kill harbor (it does)
+- [X] create a system service for harbor docker-compose file
+- [X] copy back ca.crt to client
+- [X] convert files to templates and use host as variable (create-certs.sh, harbor-template.yml)
+- [ ] convert shell script to task
+- [X] add scanning capabilities
+- [ ] setup replication to GCR
+- [ ] use the cert with k8s nodes
 
 ## proxmox vm clone
 

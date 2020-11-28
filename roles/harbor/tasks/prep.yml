@@ -1,0 +1,21 @@
+---
+- name: Download Harbor installer
+  get_url:
+    url: https://github.com/goharbor/harbor/releases/download/v{{ harbor_version }}/harbor-online-installer-v{{ harbor_version }}.tgz
+    dest: /tmp/harbor-{{ harbor_version }}.tar.gz
+
+# TODO
+#- name: Verify GPG key
+#
+
+- name: Make install directory
+  file:
+    path: /harbor
+    state: directory
+    mode: '0777'
+
+- name: Unzip installer
+  unarchive:
+    remote_src: yes
+    src: /tmp/harbor-{{ harbor_version }}.tar.gz
+    dest: /harbor

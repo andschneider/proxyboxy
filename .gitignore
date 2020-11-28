@@ -5,3 +5,5 @@
 .idea/
 
 venv/
+
+roles/k8s/files/ca.crt

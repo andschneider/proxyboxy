@@ -1,0 +1,12 @@
+---
+- name: run Harbor installer
+  command: ./install.sh --with-clair
+  args:
+    chdir: /harbor/harbor
+
+- name: enable Harbor service
+  systemd:
+    name: harbor
+    state: started
+    enabled: yes
+    daemon_reload: yes
