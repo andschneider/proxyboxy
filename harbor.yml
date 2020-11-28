@@ -3,13 +3,12 @@
   user: andrew
 
   vars:
-    harbor_version: 2.0.1
+    harbor_version: 2.1.1
     harbor_host: reg.andrew-net.com
     user: andrew
-    docker_version: 5:19.03.12~3-0~ubuntu-focal
+    docker_version: 5:19.03.13~3-0~ubuntu-focal
 
   tasks:
     - include_tasks: tasks/docker.yml
     - include_tasks: tasks/docker-compose.yml
     - include_tasks: tasks/harbor.yml
-#    - include_tasks: tasks/reboot.yml

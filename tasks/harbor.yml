@@ -1,30 +1,43 @@
 ---
 - name: Download Harbor installer
   get_url:
-    # TODO add version as variable
-    url: https://github.com/goharbor/harbor/releases/download/v2.0.1/harbor-online-installer-v2.0.1.tgz
-    #    url: "https://github.com/goharbor/harbor/releases/download/v{{ harbor_version }}/harbor-online-installer-v{{ harbor_version }}.tgz"
-    dest: /tmp/harbor-2.0.1.tar.gz
+    url: https://github.com/goharbor/harbor/releases/download/v{{ harbor_version }}/harbor-online-installer-v{{ harbor_version }}.tgz
+    dest: /tmp/harbor-{{ harbor_version }}.tar.gz
 
 # TODO
 #- name: Verify GPG key
 #
+
+- name: Make install directory
+  file:
+    path: /harbor
+    state: directory
+    mode: '0777'
+
 - name: Unzip installer
   unarchive:
     remote_src: yes
-    src: /tmp/harbor-2.0.1.tar.gz
-    dest: /tmp
+    src: /tmp/harbor-{{ harbor_version }}.tar.gz
+    dest: /harbor
 
 - name: Make cert directory
   file:
-    path: /tmp/certs
+    path: /harbor/certs
     state: directory
     mode: '0755'
 
 - name: Generate certs
   script: create-harbor-certs.sh
   args:
-    chdir: /tmp/certs
+    chdir: /harbor/certs
+
+# TODO not sure if should just use scp in the Makefile instead
+- name: Copy certs back to host computer
+  become: yes
+  fetch:
+    src: /harbor/certs/ca.crt
+    dest: /home/andrew/Github/
+    flat: yes
 
 - name: Restart Docker engine
   service:
@@ -39,9 +52,21 @@
 - name: Copy Harbor config file
   copy:
     src: ./files/harbor.yml.tmpl
-    dest: /tmp/harbor/harbor.yml
+    dest: /harbor/harbor/harbor.yml
 
 - name: Run Harbor installer
   shell: ./install.sh
   args:
-    chdir: /tmp/harbor
+    chdir: /harbor/harbor
+
+- name: Copy Harbor systemd service file
+  copy:
+    src: ./files/harbor.service
+    dest: /etc/systemd/system/harbor.service
+
+- name: Enable Harbor service
+  systemd:
+    name: harbor
+    state: started
+    enabled: yes
+    daemon_reload: yes

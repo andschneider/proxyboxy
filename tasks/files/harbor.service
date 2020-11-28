@@ -1,0 +1,11 @@
+[Unit]
+Description=Harbor Service
+After=network.target docker.service
+[Service]
+Type=simple
+WorkingDirectory=/harbor/harbor
+ExecStart=/usr/local/bin/docker-compose -f /harbor/harbor/docker-compose.yml up
+ExecStop=/usr/local/bin/docker-compose -f /harbor/harbor/docker-compose.yml down
+RemainAfterExit=yes
+[Install]
+WantedBy=multi-user.target
