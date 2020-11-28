@@ -31,31 +31,18 @@
   args:
     chdir: /harbor/certs
 
-# TODO not sure if should just use scp in the Makefile instead
-- name: Copy certs back to host computer
-  become: yes
-  fetch:
-    src: /harbor/certs/ca.crt
-    dest: /home/andrew/Github/
-    flat: yes
-
 - name: Restart Docker engine
   service:
     name: docker
     state: restarted
 
-#- name: Remove cert directory
-#  file:
-#    path: /tmp/cert
-#    state: absent
-
 - name: Copy Harbor config file
-  copy:
-    src: ./files/harbor.yml.tmpl
+  template:
+    src: ./templates/harbor.yml.tmpl.j2
     dest: /harbor/harbor/harbor.yml
 
 - name: Run Harbor installer
-  shell: ./install.sh
+  shell: ./install.sh --with-clair
   args:
     chdir: /harbor/harbor
 

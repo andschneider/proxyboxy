@@ -5,9 +5,13 @@ lint:
 clean-vm: inventory clean.yml
 	ansible-playbook -i inventory clean.yml -Kb -v
 
-harbor: inventory harbor.yml
-	@mkdir -p /home/andrew/harbor
+get-harbor-certs:
+	scp 192.168.17.170:/harbor/certs/ca.crt ./roles/k8s/files/ca.crt
+
+install-harbor: inventory harbor.yml
 	ansible-playbook -i inventory harbor.yml -Kb -v
-	@sudo cp /home/andrew/harbor/ca.crt /usr/local/share/ca-certificates/ca.crt
+
+harbor: install get-harbor-certs
+	@sudo cp ./roles/k8s/files/ca.crt /usr/local/share/ca-certificates/ca.crt
 	@sudo update-ca-certificates
 	@sudo systemctl restart docker.service
