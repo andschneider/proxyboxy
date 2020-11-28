@@ -1,0 +1,4 @@
+---
+- include: prep.yml
+- include: certs.yml
+- include: install.yml

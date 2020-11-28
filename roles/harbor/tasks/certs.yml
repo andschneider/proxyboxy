@@ -1,0 +1,17 @@
+---
+- name: Make cert directory
+  file:
+    path: /harbor/certs
+    state: directory
+    mode: '0755'
+
+# TODO change this shell script to a playbook
+- name: Generate certs
+  script: create-harbor-certs.sh
+  args:
+    chdir: /harbor/certs
+
+- name: Restart Docker engine
+  service:
+    name: docker
+    state: restarted

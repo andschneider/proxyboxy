@@ -1,0 +1,14 @@
+---
+- name: Copy Harbor config file
+  template:
+    src: harbor.yml.tmpl.j2
+    dest: /harbor/harbor/harbor.yml
+    mode: '0644'
+  notify: run Harbor installer
+
+- name: Copy Harbor systemd service file
+  copy:
+    src: harbor.service
+    dest: /etc/systemd/system/harbor.service
+    mode: '0644'
+  notify: enable Harbor service

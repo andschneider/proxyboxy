@@ -11,7 +11,7 @@ get-harbor-certs:
 install-harbor: inventory harbor.yml
 	ansible-playbook -i inventory harbor.yml -Kb -v
 
-harbor: install get-harbor-certs
+harbor: install-harbor  get-harbor-certs
 	@sudo cp ./roles/k8s/files/ca.crt /usr/local/share/ca-certificates/ca.crt
 	@sudo update-ca-certificates
 	@sudo systemctl restart docker.service
