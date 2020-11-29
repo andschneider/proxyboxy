@@ -1,5 +1,14 @@
 ---
-# TODO add key https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#installing-kubeadm-kubelet-and-kubectl
+- name: Add Kubernetes' GPG key
+  apt_key:
+    url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+    state: present
+
+- name: Add Kubernetes' repo
+  apt_repository:
+    repo: deb https://apt.kubernetes.io/ kubernetes-xenial main
+    state: present
+
 - name: Install required packages for Kubernetes
   apt:
     update_cache: yes
@@ -8,7 +17,7 @@
     - apt-transport-https
     - curl
 
-- name: Install Kubernetes
+- name: Install kubelet, kubeadm, and kubectl
   apt:
     update_cache: yes
     autoclean : yes

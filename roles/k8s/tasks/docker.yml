@@ -1,0 +1,17 @@
+---
+- name: Configure Docker daemon
+  copy:
+    src: docker-daemon.json
+    dest: /etc/docker/daemon.json
+    backup: yes
+
+- name: Create /etc/systemd/system/docker.service.d
+  file:
+    path: /etc/systemd/system/docker.service.d
+    state: directory
+
+- name: Reload Docker service
+  systemd:
+    state: restarted
+    daemon_reload: yes
+    name: docker

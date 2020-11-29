@@ -1,0 +1,11 @@
+---
+# based on this answer: https://serverfault.com/a/684792
+- name: Disable swap
+  command: swapoff -a
+
+- name: Remove swap from fstab
+  lineinfile:
+    path: /etc/fstab
+    state: absent
+    regexp: '^/swap'
+    backup: yes
