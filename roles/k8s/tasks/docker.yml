@@ -9,9 +9,18 @@
   file:
     path: /etc/systemd/system/docker.service.d
     state: directory
+  notify: restart Docker service
 
-- name: Reload Docker service
-  systemd:
-    state: restarted
-    daemon_reload: yes
-    name: docker
+- name: Copy Harbor cert
+  copy:
+    src: ca.crt
+    dest: /usr/local/share/ca-certificates/ca.crt
+  notify: update certs
+
+- name: Add Harbor to /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    regexp: '^192\.168'
+    insertafter: '^127\.0\.1\.1'
+    line: '192.168.17.170 reg.andrew-net.com'
+    backup: yes

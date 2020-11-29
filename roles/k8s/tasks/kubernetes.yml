@@ -12,19 +12,17 @@
 - name: Install required packages for Kubernetes
   apt:
     update_cache: yes
-    autoclean : yes
+    autoclean: yes
     name:
-    - apt-transport-https
-    - curl
+      - apt-transport-https
+      - curl
 
 - name: Install kubelet, kubeadm, and kubectl
   apt:
     update_cache: yes
-    autoclean : yes
+    autoclean: yes
     name:
-    - "kubelet={{ k8s_version }}"
-    - "kubeadm={{ k8s_version }}"
-    - "kubectl={{ k8s_version }}"
-
-- name: Prevent updates to packages
-  command: apt-mark hold kubelet kubeadm kubectl
+      - "kubelet={{ k8s_version }}"
+      - "kubeadm={{ k8s_version }}"
+      - "kubectl={{ k8s_version }}"
+  notify: prevent updates to packages
