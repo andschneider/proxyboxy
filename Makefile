@@ -25,5 +25,5 @@ harbor: install-harbor  get-harbor-certs
 ###############################
 ###           K8S           ###
 ###############################
-test-k8s: inventory k8s-node.yml
-	ansible-playbook -i inventory k8s-node.yml -Kb -v
+test-k8s: inventory k8s.yml
+	ansible-playbook -i inventory k8s.yml -Kb -v

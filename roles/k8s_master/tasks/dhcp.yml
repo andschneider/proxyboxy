@@ -1,0 +1,23 @@
+---
+- name: Create dhcp configuration
+  copy:
+    src: dhcpd.conf
+    dest: /etc/dhcp/dhcpd.conf
+    backup: yes
+
+- name: Install dhcp
+  apt:
+    pkg: isc-dhcp-server
+
+- name: Set ens19 as default for isc service
+  copy:
+    src: isc-dhcp-server
+    dest: /etc/default/isc-dhcp-server
+    backup: yes
+  register: iscp
+
+- name: Restart isc service
+  systemd:
+    state: restarted
+    name: isc-dhcp-server
+  when: iscp is changed

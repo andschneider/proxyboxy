@@ -1,0 +1,9 @@
+- name: Assign static IP to ens19
+  copy:
+    src: 50-k8s-master.yaml
+    dest: /etc/netplan/01-k8s.yaml
+  register: eth
+
+- name: Apply netplan configuration
+  command: netplan apply
+  when: eth is changed

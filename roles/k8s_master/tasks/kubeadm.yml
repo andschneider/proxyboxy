@@ -1,0 +1,19 @@
+---
+- name: Create cluster
+  shell: |
+    kubeadm init --pod-network-cidr 10.244.0.0/16 \
+    --apiserver-advertise-address 10.0.0.1
+
+- name: Create .kube config directory
+  file:
+    path: /home/{{ ansible_user }}/.kube
+    state: directory
+    mode: '0775'
+
+- name: Copy config
+  copy:
+    remote_src: yes
+    src: /etc/kubernetes/admin.conf
+    dest: /home/{{ ansible_user }}/.kube/config
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"

@@ -1,7 +1,7 @@
 - name: Let ens19 use DHCP
-  template:
-    src: 01-k8s-node.yaml
-    dest: /etc/netplan/01-k8s-node.yaml
+  copy:
+    src: 51-k8s-node.yaml
+    dest: /etc/netplan/01-k8s.yaml
   register: eth
 
 - name: Apply netplan configuration

@@ -1,5 +1,5 @@
 ---
-- hosts: k8s_master
+- hosts: k8s_setup
   user: andrew
 
   vars:
@@ -13,3 +13,10 @@
 
   roles:
     - k8s
+
+- name: Setup master
+  hosts: k8s_master
+  user: andrew
+
+  roles:
+    - k8s_master
