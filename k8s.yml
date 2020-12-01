@@ -1,0 +1,22 @@
+---
+- hosts: k8s_setup
+  user: andrew
+
+  vars:
+    user: andrew
+    docker_version: 5:19.03.13~3-0~ubuntu-focal
+    k8s_version: 1.19.4-00
+
+  pre_tasks:
+    - include_tasks: tasks/docker.yml
+    - include_tasks: tasks/nfs-client.yml
+
+  roles:
+    - k8s
+
+- name: Setup master
+  hosts: k8s_master
+  user: andrew
+
+  roles:
+    - k8s_master

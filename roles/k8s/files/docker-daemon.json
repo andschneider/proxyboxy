@@ -2,10 +2,6 @@
   "exec-opts": [
     "native.cgroupdriver=systemd"
   ],
-  "insecure-registries": [
-    "192.168.1.211:80",
-    "0.0.0.0/0"
-  ],
   "log-driver": "json-file",
   "log-opts": {
     "max-size": "100m"

@@ -3,10 +3,10 @@
   user: andrew
 
   vars:
-    new_host: harbor
-    updates: true
+    new_host: k8s-node-1
+    updates: false
     set_static: true
-    static_ip: 192.168.17.170/24
+    static_ip: 192.168.17.173/24
     gateway: 192.168.17.1
     nameservers: [ 192.168.1.5, 1.1.1.1 ]
     reboot: true # note that if true, ansible can't reconnect to the host

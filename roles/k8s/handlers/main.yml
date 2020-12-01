@@ -1,0 +1,13 @@
+---
+- name: update certs
+  command: update-ca-certificates
+  notify: restart Docker service
+
+- name: restart Docker service
+  systemd:
+    name: docker
+    state: restarted
+    daemon_reload: yes
+
+- name: prevent updates to packages
+  command: apt-mark hold kubelet kubeadm kubectl

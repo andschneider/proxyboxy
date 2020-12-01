@@ -1,0 +1,17 @@
+---
+- name: Check if swap is enabled
+  command: swapon --show
+  register: swap
+  changed_when: False
+
+# based on this answer: https://serverfault.com/a/684792
+- name: Disable swap
+  command: swapoff -a
+  when: swap.stdout | length > 0
+
+- name: Remove swap from fstab
+  lineinfile:
+    path: /etc/fstab
+    state: absent
+    regexp: '^/swap'
+    backup: yes

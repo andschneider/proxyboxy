@@ -1,0 +1,9 @@
+- name: Let ens19 use DHCP
+  copy:
+    src: 51-k8s-node.yaml
+    dest: /etc/netplan/01-k8s.yaml
+  register: eth
+
+- name: Apply netplan configuration
+  command: netplan apply
+  when: eth is changed

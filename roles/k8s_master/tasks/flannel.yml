@@ -1,0 +1,4 @@
+# TODO this shouldn't be run as root
+---
+- name: Install Flannel add on
+  command: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
