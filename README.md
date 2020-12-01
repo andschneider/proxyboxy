@@ -45,6 +45,34 @@ Clone a template and create a new VM.
 ansible-playbook -i clone-inventory create-vm.yml -Kbv --ask-pass
 ```
 
+## k8s
+
+The k8s playbook can be used to setup both worker nodes and master nodes. For both, the playbook installs and configures all the necessary dependencies and networking requirements. This is done in the `k8s` role, with tasks such as:
+
+- static IP on ens18 for all
+- DHCP on ens19 for workers
+- installs kubeadm, kubectl 
+- installs the Harbor cert
+- disables swap
+
+For master nodes, additional configuration is done using the `k8s_master` role:
+
+- static IP on ens19
+- DHCP server configuration
+- cluster creation with kubeadm
+
+To run both roles:
+
+```bash
+make k8s
+```
+
+### TODO
+
+- [ ] configure Flannel for master node
+- [ ] configure Metallb for master node
+- [ ] don't apply the DHCP on ens19 to the master node in the `k8s` role
+
 ## postgres
 
 ```bash
