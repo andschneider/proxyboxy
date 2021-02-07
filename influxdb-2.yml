@@ -1,0 +1,9 @@
+---
+- hosts: influx2
+  user: andrew
+
+  vars:
+    influxdb_version: 2.0.3
+
+  tasks:
+    - include_tasks: tasks/influx-2.yml

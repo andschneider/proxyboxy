@@ -2,6 +2,10 @@
 lint:
 	ansible-lint *.yml
 
+###############################
+###        Clean vm         ###
+###############################
+.PHONY: clean-vm
 clean-vm: inventory clean.yml
 	ansible-playbook -i inventory clean.yml -Kb -v
 
@@ -25,5 +29,13 @@ harbor: install-harbor  get-harbor-certs
 ###############################
 ###           K8S           ###
 ###############################
+.PHONY: k8s
 k8s: inventory k8s.yml
 	ansible-playbook -i inventory k8s.yml -Kb -v
+
+###############################
+###        Influx 2         ###
+###############################
+.PHONY: influx2
+influx2: inventory influxdb-2.yml
+	ansible-playbook -i inventory influxdb-2.yml -Kb -v

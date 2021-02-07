@@ -2,6 +2,10 @@
 
 proxmox
 
+## ansible setup
+
+SSH keys - TODO
+
 ## clean 
 
 Used to reset a fresh VM clone.

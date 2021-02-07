@@ -1,0 +1,28 @@
+---
+- name: Ensure wget is present
+  apt:
+    name: wget
+    state: present
+
+- name: Create directory for downloading
+  file:
+    path: /download/influx2
+    state: directory
+    mode: '0755'
+
+- name: Download InfluxDB binary
+  get_url:
+    url: https://dl.influxdata.com/influxdb/releases/influxdb2_{{ influxdb_version }}_amd64.deb
+    dest: /download/influx2/influxdb2_{{ influxdb_version }}_amd64.deb
+
+- name: Install binary
+  command: dpkg -i /download/influx2/influxdb2_{{ influxdb_version }}_amd64.deb
+
+- name: Start and enable service
+  service:
+    name: influxd
+    state: started
+    enabled: yes
+
+- name: Change timezone to PCT
+  command: "timedatectl set-timezone America/Los_Angeles"
