@@ -83,6 +83,18 @@ pve_vms:
     memory_mb: 4096
     storage: fast
     disk_gb: 64
+  # Share data lives on its own disk on tank, so the OS disk can be rebuilt
+  # without touching it.
+  - name: files
+    vmid: 101
+    ip: 10.20.0.101
+    cores: 2
+    memory_mb: 2048
+    storage: fast
+    disk_gb: 32
+    data_disks:
+      - storage: tank
+        size_gb: 200
   - name: postgres
     vmid: 110
     ip: 10.20.0.110

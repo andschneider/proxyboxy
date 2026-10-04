@@ -61,6 +61,7 @@ make pve-vms        # create any VMs in pve_vms (host_vars/pr3.yml) that don't e
 | VM       | VMID | IP            | Storage |
 | -------- | ---- | ------------- | ------- |
 | monitor  | 100  | `10.20.0.100` | `fast`  |
+| files    | 101  | `10.20.0.101` | `fast`  |
 | postgres | 110  | `10.20.0.110` | `fast`  |
 
 ### postgres
@@ -99,4 +100,22 @@ replace the file.
 ```bash
 make pve-vms      # create the monitor VM
 make monitoring
+```
+
+### files
+
+One folder, `/srv/share`, on a 200 GB data disk on `tank`, shared over NFSv4 and SMB. Every client
+acts as the `share` user (uid 2000), so files from Macs and Linux clients mix without permission
+clashes.
+
+- NFS (`files.lab.andschneider.net:/srv/share`) is open to the IPs in `share_nfs_clients` in
+  `host_vars/files/vars.yml`, `lab` by default. Add LAN devices there by IP.
+- SMB (`smb://files.lab.andschneider.net/share`) is open to `lab` and the home LAN, with user
+  `share` and the password from `host_vars/files/vault.yml`.
+- The data disk is only formatted when it's blank; the playbook never wipes it.
+
+```bash
+ansible-vault edit pve/host_vars/files/vault.yml     # vault_share_smb_password: ...
+make pve-vms   # create the files VM
+make files
 ```

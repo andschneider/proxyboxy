@@ -1,0 +1,24 @@
+---
+# The data disk from pve_vms (scsi1), mounted here and shared over NFS and SMB.
+share_disk: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi1
+share_path: /srv/share
+
+# Every NFS and SMB client acts as this user, so files from Macs and Linux
+# clients have one owner and never clash on permissions.
+share_user: share
+share_uid: 2000
+
+# NFS clients (NFSv4, port 2049). Add LAN devices by IP; give them a fixed
+# DHCP reservation on the UDM first.
+share_nfs_clients:
+  - 10.20.0.0/24 # lab
+
+# Networks allowed to connect over SMB (port 445). SMB also needs the password.
+share_smb_networks:
+  - 10.20.0.0/24 # lab
+  - 192.168.1.0/24 # home LAN
+
+# The SMB password lives in vault.yml (ansible-vault encrypted):
+#
+#   vault_share_smb_password: ...
+share_smb_password: "{{ vault_share_smb_password }}"

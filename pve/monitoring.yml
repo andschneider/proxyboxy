@@ -146,6 +146,15 @@
   hosts: lab
   become: true
 
+  vars:
+    vm_masked_collectors:
+      - smartmon
+      - ipmitool-sensor
+    vm_resettable_units:
+      - prometheus-node-exporter-smartmon.timer
+      - prometheus-node-exporter-ipmitool-sensor.timer
+      - openipmi.service
+
   tasks:
     # Ubuntu pulls in the collectors package as a recommend anyway; the apt
     # collector (pending updates) is useful on VMs.
@@ -156,18 +165,46 @@
           - prometheus-node-exporter-collectors
         update_cache: true
 
-    # QEMU disks have no SMART data, so smartmon reports them as unhealthy.
-    # Masked so a package upgrade can't re-enable it.
-    - name: Mask SMART collector
+    # VMs have no SMART data or IPMI hardware: smartmon reports QEMU disks as
+    # unhealthy, and the IPMI collector has nothing to read. Masked so a
+    # package upgrade can't re-enable them.
+    - name: Mask hardware collectors
       ansible.builtin.systemd_service:
-        name: prometheus-node-exporter-smartmon.timer
+        name: prometheus-node-exporter-{{ item }}.timer
         state: stopped
         masked: true
+      loop: "{{ vm_masked_collectors }}"
 
-    - name: Remove stale SMART metrics
-      ansible.builtin.file:
-        path: /var/lib/prometheus/node-exporter/smartmon.prom
+    # The collectors package recommends ipmitool, which pulls in openipmi,
+    # whose service fails at boot without IPMI hardware.
+    - name: Remove IPMI tools
+      ansible.builtin.apt:
+        name:
+          - ipmitool
+          - openipmi
         state: absent
+        purge: true
+
+    - name: Remove stale hardware metrics
+      ansible.builtin.file:
+        path: /var/lib/prometheus/node-exporter/{{ item }}
+        state: absent
+      loop:
+        - smartmon.prom
+        - ipmitool_sensor.prom
+
+    # Masking a running timer or removing a failed service leaves a failed
+    # unit behind, which marks the whole system degraded.
+    - name: Check for failed units
+      ansible.builtin.command: systemctl list-units --failed --plain --no-legend --output json
+      register: vm_failed_units
+      changed_when: false
+
+    - name: Clear failed units left by the above
+      ansible.builtin.command: systemctl reset-failed {{ item }}
+      loop: >-
+        {{ vm_failed_units.stdout | from_json | map(attribute='unit')
+           | select('in', vm_resettable_units) | list }}
 
 - name: PostgreSQL exporter
   hosts: postgres

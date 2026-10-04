@@ -55,4 +55,8 @@ postgres: pve/inventory.yml pve/postgres.yml
 .PHONY: monitoring
 monitoring: pve/inventory.yml pve/monitoring.yml
 	ansible-playbook -i pve/inventory.yml pve/monitoring.yml --ask-pass -v \
-		$(if $(wildcard pve/host_vars/postgres/vault.yml),--ask-vault-pass)
+		$(if $(wildcard pve/host_vars/*/vault.yml),--ask-vault-pass)
+
+.PHONY: files
+files: pve/inventory.yml pve/files.yml
+	ansible-playbook -i pve/inventory.yml pve/files.yml --ask-vault-pass -v

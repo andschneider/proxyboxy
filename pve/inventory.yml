@@ -13,5 +13,7 @@ lab:
   hosts:
     monitor:
       ansible_host: 10.20.0.100
+    files:
+      ansible_host: 10.20.0.101
     postgres:
       ansible_host: 10.20.0.110
