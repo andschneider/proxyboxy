@@ -1,0 +1,395 @@
+---
+# Metrics: exporters on pr3 and the lab VMs, Prometheus and Grafana on monitor.
+# Create the monitor VM first with `make pve-vms`.
+#
+#   make monitoring
+- name: pr3 exporters
+  hosts: pve
+  # Run queued restarts even if a later task fails, so a re-run doesn't
+  # find the config already in place and skip the restart.
+  force_handlers: true
+
+  vars:
+    pve_exporter_dir: /opt/prometheus-pve-exporter
+    pve_exporter_config: /etc/prometheus-pve-exporter/pve.yml
+
+  handlers:
+    - name: Restart pve-exporter
+      ansible.builtin.systemd_service:
+        name: prometheus-pve-exporter
+        state: restarted
+        daemon_reload: true
+
+  tasks:
+    # The collectors package adds textfile collectors on timers, so SMART,
+    # NVMe and IPMI sensor data all come through node_exporter on :9100.
+    - name: Install node_exporter and textfile collectors
+      ansible.builtin.apt:
+        name:
+          - prometheus-node-exporter
+          - prometheus-node-exporter-collectors
+          - python3-venv
+
+    - name: Enable SMART, NVMe and IPMI collectors
+      ansible.builtin.systemd_service:
+        name: prometheus-node-exporter-{{ item }}.timer
+        state: started
+        enabled: true
+      loop:
+        - smartmon
+        - nvme
+        - ipmitool-sensor
+
+    # PVE exporter: per-VM CPU, memory, disk and network from the PVE API,
+    # through a read-only token. It runs on pr3 and talks to the API on
+    # localhost, so the token never leaves the host.
+    - name: Create pve-exporter system user
+      ansible.builtin.user:
+        name: pve-exporter
+        system: true
+        shell: /usr/sbin/nologin
+        create_home: false
+
+    - name: Install prometheus-pve-exporter
+      ansible.builtin.pip:
+        name: prometheus-pve-exporter=={{ pve_exporter_version }}
+        virtualenv: "{{ pve_exporter_dir }}"
+        virtualenv_command: python3 -m venv
+      notify: Restart pve-exporter
+
+    - name: Check for prometheus user
+      ansible.builtin.command: pveum user list --output-format json
+      register: pve_users
+      changed_when: false
+
+    - name: Create prometheus user
+      ansible.builtin.command: pveum user add prometheus@pve --comment "Prometheus PVE exporter"
+      when: "'prometheus@pve' not in (pve_users.stdout | from_json | map(attribute='userid') | list)"
+
+    - name: Grant prometheus user PVEAuditor
+      ansible.builtin.command: pveum acl modify / --users prometheus@pve --roles PVEAuditor
+      changed_when: false
+
+    - name: Check for exporter config
+      ansible.builtin.stat:
+        path: "{{ pve_exporter_config }}"
+      register: pve_exporter_config_file
+
+    # PVE only shows a token secret at creation. If the config holding it is
+    # missing, replace the token rather than fail.
+    - name: Create exporter token
+      when: not pve_exporter_config_file.stat.exists
+      block:
+        - name: Remove any old exporter token
+          ansible.builtin.command: pveum user token remove prometheus@pve exporter
+          register: pve_exporter_token_remove
+          changed_when: pve_exporter_token_remove.rc == 0
+          failed_when: false
+
+        - name: Create exporter token
+          ansible.builtin.command: >-
+            pveum user token add prometheus@pve exporter --privsep 0 --output-format json
+          register: pve_exporter_token
+          no_log: true
+
+        - name: Create exporter config dir
+          ansible.builtin.file:
+            path: "{{ pve_exporter_config | dirname }}"
+            state: directory
+            owner: root
+            group: pve-exporter
+            mode: "0750"
+
+        - name: Write exporter config
+          ansible.builtin.copy:
+            dest: "{{ pve_exporter_config }}"
+            content: |
+              default:
+                user: prometheus@pve
+                token_name: exporter
+                token_value: {{ (pve_exporter_token.stdout | from_json).value }}
+                verify_ssl: false
+            owner: root
+            group: pve-exporter
+            mode: "0640"
+          no_log: true
+          diff: false
+          notify: Restart pve-exporter
+
+    - name: Install pve-exporter service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/prometheus-pve-exporter.service
+        content: |
+          [Unit]
+          Description=Prometheus PVE exporter
+          After=network-online.target pveproxy.service
+          Wants=network-online.target
+
+          [Service]
+          User=pve-exporter
+          ExecStart={{ pve_exporter_dir }}/bin/pve_exporter --config.file {{ pve_exporter_config }} --web.listen-address {{ ansible_host }}:9221
+          Restart=on-failure
+
+          [Install]
+          WantedBy=multi-user.target
+        mode: "0644"
+      notify: Restart pve-exporter
+
+    - name: Start pve-exporter
+      ansible.builtin.systemd_service:
+        name: prometheus-pve-exporter
+        state: started
+        enabled: true
+        daemon_reload: true
+
+- name: Lab VM exporters
+  hosts: lab
+  become: true
+
+  tasks:
+    # Ubuntu pulls in the collectors package as a recommend anyway; the apt
+    # collector (pending updates) is useful on VMs.
+    - name: Install node_exporter and textfile collectors
+      ansible.builtin.apt:
+        name:
+          - prometheus-node-exporter
+          - prometheus-node-exporter-collectors
+        update_cache: true
+
+    # QEMU disks have no SMART data, so smartmon reports them as unhealthy.
+    # Masked so a package upgrade can't re-enable it.
+    - name: Mask SMART collector
+      ansible.builtin.systemd_service:
+        name: prometheus-node-exporter-smartmon.timer
+        state: stopped
+        masked: true
+
+    - name: Remove stale SMART metrics
+      ansible.builtin.file:
+        path: /var/lib/prometheus/node-exporter/smartmon.prom
+        state: absent
+
+- name: PostgreSQL exporter
+  hosts: postgres
+  become: true
+  # Run queued restarts even if a later task fails, so a re-run doesn't
+  # find the config already in place and skip the restart.
+  force_handlers: true
+
+  handlers:
+    - name: Restart postgres-exporter
+      ansible.builtin.systemd_service:
+        name: prometheus-postgres-exporter
+        state: restarted
+
+  tasks:
+    # The exporter runs as the prometheus OS user and logs in over the local
+    # socket with peer auth, so no password is needed.
+    - name: Create prometheus role
+      community.postgresql.postgresql_user:
+        name: prometheus
+        role_attr_flags: LOGIN
+      become_user: postgres
+
+    - name: Grant pg_monitor
+      community.postgresql.postgresql_membership:
+        groups: pg_monitor
+        target_roles: prometheus
+      become_user: postgres
+
+    - name: Install postgres_exporter
+      ansible.builtin.apt:
+        name: prometheus-postgres-exporter
+
+    - name: Configure postgres_exporter
+      ansible.builtin.copy:
+        dest: /etc/default/prometheus-postgres-exporter
+        content: |
+          # Managed by Ansible (pve/monitoring.yml).
+          DATA_SOURCE_NAME='host=/run/postgresql user=prometheus dbname=postgres'
+          ARGS=''
+        mode: "0644"
+      notify: Restart postgres-exporter
+
+    - name: Start postgres_exporter
+      ansible.builtin.systemd_service:
+        name: prometheus-postgres-exporter
+        state: started
+        enabled: true
+
+- name: Prometheus and Grafana
+  hosts: monitor
+  become: true
+  # Run queued restarts even if a later task fails, so a re-run doesn't
+  # find the config already in place and skip the restart.
+  force_handlers: true
+
+  handlers:
+    - name: Restart prometheus
+      ansible.builtin.systemd_service:
+        name: prometheus
+        state: restarted
+
+    - name: Reload prometheus
+      ansible.builtin.systemd_service:
+        name: prometheus
+        state: reloaded
+
+    - name: Restart grafana
+      ansible.builtin.systemd_service:
+        name: grafana-server
+        state: restarted
+
+  tasks:
+    - name: Install Prometheus
+      ansible.builtin.apt:
+        name: prometheus
+        update_cache: true
+
+    - name: Set retention
+      ansible.builtin.lineinfile:
+        path: /etc/default/prometheus
+        regexp: "^ARGS="
+        line: ARGS="--storage.tsdb.retention.time={{ prometheus_retention }}"
+      notify: Restart prometheus
+
+    - name: Configure scrape targets
+      ansible.builtin.template:
+        src: templates/prometheus.yml.j2
+        dest: /etc/prometheus/prometheus.yml
+        mode: "0644"
+        validate: promtool check config %s
+      notify: Reload prometheus
+
+    - name: Start Prometheus
+      ansible.builtin.systemd_service:
+        name: prometheus
+        state: started
+        enabled: true
+
+    - name: Add Grafana signing key
+      ansible.builtin.get_url:
+        url: https://apt.grafana.com/gpg.key
+        dest: /usr/share/keyrings/grafana.asc
+        mode: "0644"
+
+    - name: Add Grafana repository
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/grafana.sources
+        content: |
+          Types: deb
+          URIs: https://apt.grafana.com
+          Suites: stable
+          Components: main
+          Signed-By: /usr/share/keyrings/grafana.asc
+        mode: "0644"
+
+    - name: Install Grafana
+      ansible.builtin.apt:
+        name: grafana
+        update_cache: true
+
+    - name: Provision Prometheus data source
+      ansible.builtin.copy:
+        dest: /etc/grafana/provisioning/datasources/prometheus.yml
+        content: |
+          # Managed by Ansible (pve/monitoring.yml).
+          apiVersion: 1
+          datasources:
+            - name: Prometheus
+              type: prometheus
+              uid: prometheus
+              access: proxy
+              url: http://localhost:9090
+              isDefault: true
+        owner: root
+        group: grafana
+        mode: "0640"
+      notify: Restart grafana
+
+    - name: Provision dashboard folder
+      ansible.builtin.copy:
+        dest: /etc/grafana/provisioning/dashboards/homelab.yml
+        content: |
+          # Managed by Ansible (pve/monitoring.yml).
+          apiVersion: 1
+          providers:
+            - name: homelab
+              folder: Homelab
+              type: file
+              allowUiUpdates: false
+              options:
+                path: /var/lib/grafana/dashboards
+        owner: root
+        group: grafana
+        mode: "0640"
+      notify: Restart grafana
+
+    - name: Create dashboards dir
+      ansible.builtin.file:
+        path: /var/lib/grafana/dashboards
+        state: directory
+        owner: root
+        group: grafana
+        mode: "0750"
+
+    - name: Create dashboard download cache
+      ansible.builtin.file:
+        path: /var/cache/grafana-dashboards
+        state: directory
+        mode: "0755"
+
+    # Downloaded on the VM, not the control machine: url lookups in forked
+    # Ansible workers crash Python on macOS. One file per revision, so a
+    # pinned revision is only fetched once.
+    - name: Download dashboards
+      ansible.builtin.get_url:
+        url: https://grafana.com/api/dashboards/{{ item.id }}/revisions/{{ item.revision }}/download
+        dest: /var/cache/grafana-dashboards/{{ item.name }}-r{{ item.revision }}.json
+        mode: "0644"
+      loop: "{{ grafana_dashboards }}"
+      loop_control:
+        label: "{{ item.name }} ({{ item.id }} r{{ item.revision }})"
+
+    # Exported dashboards reference ${DS_PROMETHEUS}, which only the import
+    # UI fills in; point it at the provisioned data source's uid instead.
+    # Only replaces the live file when it differs, and Grafana picks up file
+    # changes without a restart.
+    - name: Install dashboards
+      ansible.builtin.shell: |
+        set -eu
+        src=/var/cache/grafana-dashboards/{{ item.name }}-r{{ item.revision }}.json
+        dest=/var/lib/grafana/dashboards/{{ item.name }}.json
+        tmp=$(mktemp)
+        sed 's/${DS_PROMETHEUS}/prometheus/g' "$src" > "$tmp"
+        if cmp -s "$tmp" "$dest"; then
+          rm "$tmp"
+        else
+          install -o root -g grafana -m 0640 "$tmp" "$dest"
+          rm "$tmp"
+          echo changed
+        fi
+      register: grafana_dashboard_install
+      changed_when: "'changed' in grafana_dashboard_install.stdout"
+      loop: "{{ grafana_dashboards }}"
+      loop_control:
+        label: "{{ item.name }} ({{ item.id }} r{{ item.revision }})"
+
+    # Our own dashboards, kept in the repo. To change one, edit a copy in
+    # Grafana, export it as JSON and replace the file here.
+    - name: Install local dashboards
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: /var/lib/grafana/dashboards/{{ item | basename }}
+        owner: root
+        group: grafana
+        mode: "0640"
+      with_fileglob: "{{ playbook_dir }}/files/grafana-dashboards/*.json"
+      loop_control:
+        label: "{{ item | basename }}"
+
+    - name: Start Grafana
+      ansible.builtin.systemd_service:
+        name: grafana-server
+        state: started
+        enabled: true

@@ -76,6 +76,13 @@ vm_nameserver: 192.168.1.6
 vm_searchdomain: lab.andschneider.net
 
 pve_vms:
+  - name: monitor
+    vmid: 100
+    ip: 10.20.0.100
+    cores: 2
+    memory_mb: 4096
+    storage: fast
+    disk_gb: 64
   - name: postgres
     vmid: 110
     ip: 10.20.0.110
@@ -83,3 +90,6 @@ pve_vms:
     memory_mb: 8192
     storage: fast
     disk_gb: 64
+
+# Prometheus PVE exporter (pve/monitoring.yml), installed in a venv on pr3.
+pve_exporter_version: 3.10.1

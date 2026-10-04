@@ -5,6 +5,9 @@
 - name: PostgreSQL
   hosts: postgres
   become: true
+  # Run queued restarts even if a later task fails, so a re-run doesn't
+  # find the config already in place and skip the restart.
+  force_handlers: true
 
   vars:
     postgres_conf_dir: "/etc/postgresql/{{ postgres_version }}/main"

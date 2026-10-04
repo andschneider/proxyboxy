@@ -60,6 +60,7 @@ make pve-vms        # create any VMs in pve_vms (host_vars/pr3.yml) that don't e
 
 | VM       | VMID | IP            | Storage |
 | -------- | ---- | ------------- | ------- |
+| monitor  | 100  | `10.20.0.100` | `fast`  |
 | postgres | 110  | `10.20.0.110` | `fast`  |
 
 ### postgres
@@ -73,4 +74,29 @@ PostgreSQL from the PGDG repo, reachable from `lab` and the home LAN with passwo
 
 ```bash
 make postgres
+```
+
+### monitor
+
+Prometheus (`:9090`, 90 day retention) and Grafana (`:3000`) on `monitor`, scraping:
+
+- `node_exporter` on pr3 and every lab VM (`:9100`). On pr3 the textfile collectors add SMART,
+  NVMe and IPMI sensor metrics (fans, temps, voltages).
+- `prometheus-pve-exporter` on pr3 (`:9221`), using a read-only `prometheus@pve` token whose secret
+  stays on pr3.
+- `postgres_exporter` on postgres (`:9187`), logging in with peer auth as `prometheus`.
+
+The UDM rule `server-prometheus-scrape` must allow `10.20.0.100` to reach `10.10.0.7` on 9100 and
+9221. Grafana starts with `admin`/`admin` and asks for a new password on first login.
+
+Dashboards are provisioned into the Homelab folder and are read-only in the UI; use **Save as** to
+make an editable copy. Community ones (Node Exporter Full, Proxmox, PostgreSQL) come from
+grafana.com via `grafana_dashboards` in `host_vars/monitor.yml`. Our own live in
+`files/grafana-dashboards/`: **pr3 hardware** shows fans, CPU, board and disk temperatures, SSD
+wear, disk errors and ZFS pool state. To change one, edit a copy in Grafana, export it as JSON and
+replace the file.
+
+```bash
+make pve-vms      # create the monitor VM
+make monitoring
 ```

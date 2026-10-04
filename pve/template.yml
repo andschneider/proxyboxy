@@ -19,6 +19,11 @@
 
     # Ubuntu cloud images ship without the guest agent; every clone gets it
     # from this vendor snippet.
+    #
+    # netplan apply works around a 26.04 first-boot race where cloud-init
+    # can't rename ens18 to eth0 ("[busy] Error renaming"), leaving the VM on
+    # a DHCP address instead of its static IP. Harmless when the rename worked.
+    # https://github.com/canonical/cloud-init/issues/6887
     - name: Create snippets dir
       ansible.builtin.file:
         path: "/{{ pve_iso_dataset }}/snippets"
@@ -33,6 +38,7 @@
           packages:
             - qemu-guest-agent
           runcmd:
+            - netplan apply
             - systemctl enable --now qemu-guest-agent
         mode: "0644"
 

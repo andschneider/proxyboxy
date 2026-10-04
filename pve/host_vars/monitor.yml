@@ -1,0 +1,18 @@
+---
+# How long Prometheus keeps samples. ~20 targets at a 30s interval is well
+# under 10 GB for 90 days.
+prometheus_retention: 90d
+prometheus_scrape_interval: 30s
+
+# Community dashboards from grafana.com, provisioned into the Homelab folder.
+# Pinned to a revision; bump it to pick up upstream changes.
+grafana_dashboards:
+  - name: node-exporter-full
+    id: 1860
+    revision: 45
+  - name: proxmox
+    id: 10347
+    revision: 5
+  - name: postgresql
+    id: 9628
+    revision: 8

@@ -1,0 +1,38 @@
+# Managed by Ansible (pve/monitoring.yml).
+global:
+  scrape_interval: {{ prometheus_scrape_interval }}
+  evaluation_interval: {{ prometheus_scrape_interval }}
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # node_exporter on pr3 and every lab VM. On pr3 this also carries SMART,
+  # NVMe and IPMI sensor (fans, temps) metrics from the textfile collectors.
+  - job_name: node
+    static_configs:
+{% for host in groups['pve'] + groups['lab'] %}
+      - targets: ["{{ hostvars[host].ansible_host }}:9100"]
+        labels:
+          instance: {{ host }}
+{% endfor %}
+
+  - job_name: pve
+    metrics_path: /pve
+    params:
+      module: [default]
+      cluster: ["1"]
+      node: ["1"]
+    static_configs:
+{% for host in groups['pve'] %}
+      - targets: ["{{ hostvars[host].ansible_host }}:9221"]
+        labels:
+          instance: {{ host }}
+{% endfor %}
+
+  - job_name: postgres
+    static_configs:
+      - targets: ["{{ hostvars['postgres'].ansible_host }}:9187"]
+        labels:
+          instance: postgres

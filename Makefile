@@ -50,3 +50,9 @@ pve-vms: pve/inventory.yml pve/vms.yml
 postgres: pve/inventory.yml pve/postgres.yml
 	ansible-playbook -i pve/inventory.yml pve/postgres.yml -v \
 		$(if $(wildcard pve/host_vars/postgres/vault.yml),--ask-vault-pass)
+
+# --ask-pass is for root on pr3; lab VMs use the SSH key.
+.PHONY: monitoring
+monitoring: pve/inventory.yml pve/monitoring.yml
+	ansible-playbook -i pve/inventory.yml pve/monitoring.yml --ask-pass -v \
+		$(if $(wildcard pve/host_vars/postgres/vault.yml),--ask-vault-pass)
