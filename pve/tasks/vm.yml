@@ -42,7 +42,7 @@
     - name: Add data disks
       ansible.builtin.command: >-
         qm set {{ vm.vmid }}
-        --scsi{{ idx + 1 }} {{ disk.storage }}:{{ disk.size_gb }},discard=on,iothread=1,ssd=1
+        --scsi{{ idx + 1 }} {{ disk.storage }}:{{ disk.size_gb }},discard=on,iothread=1,ssd=1{{ '' if disk.backup | default(true) else ',backup=0' }}
       loop: "{{ vm.data_disks | default([]) }}"
       loop_control:
         loop_var: disk

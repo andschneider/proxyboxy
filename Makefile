@@ -60,3 +60,7 @@ monitoring: pve/inventory.yml pve/monitoring.yml
 .PHONY: files
 files: pve/inventory.yml pve/files.yml
 	ansible-playbook -i pve/inventory.yml pve/files.yml --ask-vault-pass -v
+
+.PHONY: pve-backup
+pve-backup: pve/inventory.yml pve/backup.yml
+	ansible-playbook -i pve/inventory.yml pve/backup.yml --ask-pass -v

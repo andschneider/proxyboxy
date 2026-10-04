@@ -1,0 +1,64 @@
+---
+# Scheduled vzdump job: every VM except the template, nightly, to the backup
+# pool. Snapshot mode with the guest agent freezes each VM's filesystems for a
+# consistent copy without shutting it down.
+#
+#   make pve-backup
+- name: Backups
+  hosts: pve
+  gather_facts: false
+
+  vars:
+    pve_backup_settings:
+      schedule: "{{ pve_backup_job.schedule }}"
+      storage: "{{ pve_backup_job.storage }}"
+      all: 1
+      exclude: "{{ pve_backup_job.exclude }}"
+      mode: snapshot
+      compress: zstd
+      enabled: 1
+      # PVE fills this in per backup; !unsafe stops Ansible templating it.
+      notes-template: !unsafe "{{guestname}}"
+
+    # --key value pairs for pvesh.
+    pve_backup_args: >-
+      {{ pve_backup_settings.keys() | map('regex_replace', '^', '--')
+         | zip(pve_backup_settings.values() | map('string')) | flatten }}
+
+  tasks:
+    - name: Check for backup job
+      ansible.builtin.command: >-
+        pvesh get /cluster/backup/{{ pve_backup_job.id }} --output-format json
+      register: pve_backup_current
+      changed_when: false
+      failed_when: false
+
+    - name: Create backup job
+      ansible.builtin.command:
+        argv: "{{ ['pvesh', 'create', '/cluster/backup', '--id', pve_backup_job.id] + pve_backup_args }}"
+      when: pve_backup_current.rc != 0
+
+    # Only settings that differ from the live job count as a change.
+    - name: Find backup job drift
+      ansible.builtin.set_fact:
+        pve_backup_drift: >-
+          {%- set current = pve_backup_current.stdout | from_json -%}
+          {%- for key, value in pve_backup_settings.items() -%}
+          {%- if (current[key] | default('')) | string != value | string %}{{ key }} {% endif -%}
+          {%- endfor -%}
+      when: pve_backup_current.rc == 0
+
+    - name: Update backup job ({{ pve_backup_drift | default('') | trim }})
+      ansible.builtin.command:
+        argv: "{{ ['pvesh', 'set', '/cluster/backup/' ~ pve_backup_job.id] + pve_backup_args }}"
+      when:
+        - pve_backup_current.rc == 0
+        - pve_backup_drift | trim | length > 0
+
+    # After the job, so a disk problem can't stop the job being created.
+    - name: Reconcile per-disk backup flags
+      ansible.builtin.include_tasks: tasks/backup-disks.yml
+      loop: "{{ pve_vms | selectattr('data_disks', 'defined') | list }}"
+      loop_control:
+        loop_var: vm
+        label: "{{ vm.name }}"

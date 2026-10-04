@@ -119,3 +119,17 @@ ansible-vault edit pve/host_vars/files/vault.yml     # vault_share_smb_password:
 make pve-vms   # create the files VM
 make files
 ```
+
+## Backups
+
+A nightly vzdump job (02:30) backs up every VM except the template to the `backup` pool on the
+IronWolf, keeping 7 daily, 4 weekly and 6 monthly copies. Snapshot mode with the guest agent freezes
+each VM's filesystems for a consistent copy without downtime. Schedule and exclusions are in
+`pve_backup_job` in `host_vars/pr3.yml`.
+
+Data disks marked `backup: false` in `pve_vms` are skipped. Right now that's the files share, which
+isn't backed up at all.
+
+```bash
+make pve-backup
+```
