@@ -1,0 +1,34 @@
+---
+# How long Prometheus keeps samples. ~20 targets at a 30s interval is well
+# under 10 GB for 90 days.
+prometheus_retention: 90d
+prometheus_scrape_interval: 30s
+# Links in alert notifications point here.
+prometheus_external_url: http://monitor.lab.andschneider.net:9090
+
+# Community dashboards from grafana.com, provisioned into the Homelab folder.
+# Pinned to a revision; bump it to pick up upstream changes.
+grafana_dashboards:
+  - name: node-exporter-full
+    id: 1860
+    revision: 45
+  - name: proxmox
+    id: 10347
+    revision: 5
+  - name: postgresql
+    id: 9628
+    revision: 8
+
+# Alert notifications go to ntfy through its built-in Alertmanager template
+# (ntfy server 2.14+). The topic, and a token if the topic is protected, live
+# in vault.yml (ansible-vault encrypted):
+#
+#   vault_ntfy_topic: ...
+#   vault_ntfy_token: tk_...   # optional
+ntfy_url: https://ntfy.sh
+ntfy_topic: "{{ vault_ntfy_topic }}"
+ntfy_token: "{{ vault_ntfy_token | default('') }}"
+
+# Dead man's switch for the Watchdog alert (e.g. a healthchecks.io ping URL),
+# in vault.yml as vault_deadman_url. Empty disables it.
+deadman_url: "{{ vault_deadman_url | default('') }}"

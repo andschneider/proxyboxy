@@ -20,6 +20,10 @@
       # PVE fills this in per backup; !unsafe stops Ansible templating it.
       notes-template: !unsafe "{{guestname}}"
 
+    # Where the backup storage keeps its archives.
+    pve_backup_dump_dir: >-
+      /{{ (pve_dir_storages | selectattr('id', 'equalto', pve_backup_job.storage) | first).dataset }}/dump
+
     # --key value pairs for pvesh.
     pve_backup_args: >-
       {{ pve_backup_settings.keys() | map('regex_replace', '^', '--')
@@ -54,6 +58,57 @@
       when:
         - pve_backup_current.rc == 0
         - pve_backup_drift | trim | length > 0
+
+    # Backup age for Prometheus (BackupStale alert). Runs every 15 minutes
+    # and writes to node_exporter's textfile collector.
+    # node_exporter's textfile dir; normally created by make monitoring.
+    - name: Create node_exporter textfile dir
+      ansible.builtin.file:
+        path: /var/lib/prometheus/node-exporter
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Install backup metrics script
+      ansible.builtin.template:
+        src: templates/vzdump-metrics.py.j2
+        dest: /usr/local/bin/vzdump-metrics
+        mode: "0755"
+
+    - name: Install backup metrics service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/vzdump-metrics.service
+        content: |
+          [Unit]
+          Description=Write vzdump backup age metrics for node_exporter
+
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/local/bin/vzdump-metrics
+        mode: "0644"
+
+    - name: Install backup metrics timer
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/vzdump-metrics.timer
+        content: |
+          [Unit]
+          Description=Write vzdump backup age metrics every 15 minutes
+
+          [Timer]
+          OnBootSec=2min
+          OnUnitActiveSec=15min
+
+          [Install]
+          WantedBy=timers.target
+        mode: "0644"
+
+    - name: Start backup metrics timer
+      ansible.builtin.systemd_service:
+        name: vzdump-metrics.timer
+        state: started
+        enabled: true
+        daemon_reload: true
 
     # After the job, so a disk problem can't stop the job being created.
     - name: Reconcile per-disk backup flags

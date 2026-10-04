@@ -277,18 +277,49 @@
         name: grafana-server
         state: restarted
 
+    - name: Restart alertmanager
+      ansible.builtin.systemd_service:
+        name: prometheus-alertmanager
+        state: restarted
+
   tasks:
     - name: Install Prometheus
       ansible.builtin.apt:
         name: prometheus
         update_cache: true
 
-    - name: Set retention
+    # The external URL is what alert notifications link back to.
+    - name: Set retention and external URL
       ansible.builtin.lineinfile:
         path: /etc/default/prometheus
         regexp: "^ARGS="
-        line: ARGS="--storage.tsdb.retention.time={{ prometheus_retention }}"
+        line: >-
+          ARGS="--storage.tsdb.retention.time={{ prometheus_retention }}
+          --web.external-url={{ prometheus_external_url }}"
       notify: Restart prometheus
+
+    - name: Check ntfy settings are set
+      ansible.builtin.assert:
+        that: vault_ntfy_topic is defined
+        fail_msg: >-
+          vault_ntfy_topic is missing. Create it with
+          'ansible-vault create pve/host_vars/monitor/vault.yml'.
+        quiet: true
+
+    # Rules before the main config, which references them.
+    - name: Create rules dir
+      ansible.builtin.file:
+        path: /etc/prometheus/rules
+        state: directory
+        mode: "0755"
+
+    - name: Install alert rules
+      ansible.builtin.copy:
+        src: files/prometheus/alerts.yml
+        dest: /etc/prometheus/rules/alerts.yml
+        mode: "0644"
+        validate: promtool check rules %s
+      notify: Reload prometheus
 
     - name: Configure scrape targets
       ansible.builtin.template:
@@ -301,6 +332,39 @@
     - name: Start Prometheus
       ansible.builtin.systemd_service:
         name: prometheus
+        state: started
+        enabled: true
+
+    # Alertmanager groups alerts and sends them to ntfy. Only Prometheus and
+    # Grafana (both local) talk to it, so it listens on localhost only, and
+    # clustering is off.
+    - name: Install Alertmanager
+      ansible.builtin.apt:
+        name: prometheus-alertmanager
+
+    - name: Set Alertmanager options
+      ansible.builtin.copy:
+        dest: /etc/default/prometheus-alertmanager
+        content: |
+          # Managed by Ansible (pve/monitoring.yml).
+          ARGS="--web.listen-address=127.0.0.1:9093 --cluster.listen-address="
+        mode: "0644"
+      notify: Restart alertmanager
+
+    - name: Configure Alertmanager
+      ansible.builtin.template:
+        src: templates/alertmanager.yml.j2
+        dest: /etc/prometheus/alertmanager.yml
+        owner: root
+        group: prometheus
+        mode: "0640"
+        validate: amtool check-config %s
+      diff: false
+      notify: Restart alertmanager
+
+    - name: Start Alertmanager
+      ansible.builtin.systemd_service:
+        name: prometheus-alertmanager
         state: started
         enabled: true
 
@@ -351,6 +415,15 @@
               access: proxy
               url: http://localhost:9090
               isDefault: true
+            # Firing alerts and silences in Grafana's Alerting UI.
+            - name: Alertmanager
+              type: alertmanager
+              uid: alertmanager
+              access: proxy
+              url: http://localhost:9093
+              jsonData:
+                implementation: prometheus
+                handleGrafanaManagedAlerts: false
         owner: root
         group: grafana
         mode: "0640"
@@ -436,6 +509,14 @@
       with_fileglob: "{{ playbook_dir }}/files/grafana-dashboards/*.json"
       loop_control:
         label: "{{ item | basename }}"
+
+    - name: Use the overview as Grafana's home page
+      ansible.builtin.lineinfile:
+        path: /etc/grafana/grafana.ini
+        regexp: '^;?\s*default_home_dashboard_path\s*='
+        line: default_home_dashboard_path = /var/lib/grafana/dashboards/homelab-overview.json
+        insertafter: '^\[dashboards\]'
+      notify: Restart grafana
 
     - name: Start Grafana
       ansible.builtin.systemd_service:

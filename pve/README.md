@@ -9,14 +9,14 @@ VLANs live on the UDM Pro. The switch can't tag, so each network gets its own un
 address, and VMs attach to it untagged.
 
 | VLAN           | Subnet         | Hosts                                        |
-| -------------- | -------------- | -------------------------------------------- |
+|----------------|----------------|----------------------------------------------|
 | 10, `lab-mgmt` | `10.10.0.0/24` | pr3 `10.10.0.7`, BMC `10.10.0.8`; no DHCP    |
 | 20, `lab`      | `10.20.0.0/24` | VMs; DHCP `.10`–`.99`, statics `.100`–`.254` |
 
 ## Disk layout
 
 | Disk                  | by-id                                | Use                                      |
-| --------------------- | ------------------------------------ | ---------------------------------------- |
+|-----------------------|--------------------------------------|------------------------------------------|
 | Samsung 970 EVO 500GB | `nvme-Samsung_SSD_970_EVO_500GB_...` | Boot/OS (ext4, installer)                |
 | 2x WD SN750 1TB       | `nvme-WDS100T3X0C-00SJG0_*`          | `fast` ZFS mirror (VMs)                  |
 | 2x Crucial MX500 2TB  | `ata-CT2000MX500SSD1_*`              | `tank` ZFS mirror (VMs)                  |
@@ -59,7 +59,7 @@ make pve-vms        # create any VMs in pve_vms (host_vars/pr3.yml) that don't e
 ```
 
 | VM       | VMID | IP            | Storage |
-| -------- | ---- | ------------- | ------- |
+|----------|------|---------------|---------|
 | monitor  | 100  | `10.20.0.100` | `fast`  |
 | files    | 101  | `10.20.0.101` | `fast`  |
 | postgres | 110  | `10.20.0.110` | `fast`  |
@@ -90,20 +90,41 @@ Prometheus (`:9090`, 90 day retention) and Grafana (`:3000`) on `monitor`, scrap
 - `postgres_exporter` on postgres (`:9187`), logging in with peer auth as `prometheus`.
 
 The UDM rule `server-prometheus-scrape` must allow `10.20.0.100` to reach `10.10.0.7` on 9100 and
+
 9221. Grafana starts with `admin`/`admin` and asks for a new password on first login.
-unattended-upgrades also installs Grafana updates from its apt repo.
+      unattended-upgrades also installs Grafana updates from its apt repo.
 
 Dashboards are provisioned into the Homelab folder and are read-only in the UI; use **Save as** to
 make an editable copy. Community ones (Node Exporter Full, Proxmox, PostgreSQL) come from
-grafana.com via `grafana_dashboards` in `host_vars/monitor.yml`. Our own live in
-`files/grafana-dashboards/`: **pr3 hardware** shows fans, CPU, board and disk temperatures, SSD
-wear, disk errors and ZFS pool state. To change one, edit a copy in Grafana, export it as JSON and
-replace the file.
+grafana.com via `grafana_dashboards` in `host_vars/monitor/vars.yml`. Our own live in
+`files/grafana-dashboards/`: **Homelab overview** (Grafana's home page) has health tiles, firing
+alerts, the VMs, storage and Postgres on one screen, linking to the detailed dashboards; **pr3
+hardware** shows fans, CPU, board and disk temperatures, SSD wear, disk errors and ZFS pool state.
+To change one, edit a copy in Grafana, export it as JSON and replace the file.
 
 ```bash
 make pve-vms      # create the monitor VM
 make monitoring
 ```
+
+#### Alerts
+
+Prometheus evaluates the rules in `files/prometheus/alerts.yml` (targets and VMs down, ZFS, SMART,
+NVMe, fans, BMC alarms, temperatures, disk space and wear, stale backups, updates waiting a week,
+reboots needed for 3 days) and Alertmanager sends them to ntfy using ntfy's built-in Alertmanager
+template. Critical alerts arrive as urgent and repeat every 4h until fixed; warnings repeat daily.
+Alertmanager listens on localhost only; see firing alerts and add silences in Grafana under
+Alerting, with the Alertmanager data source.
+
+The ntfy topic (and a token, if the topic is protected) go in an ansible-vault encrypted
+`host_vars/monitor/vault.yml`:
+
+```bash
+ansible-vault create pve/host_vars/monitor/vault.yml   # vault_ntfy_topic, vault_ntfy_token
+```
+
+Backup age comes from a `vzdump-metrics` timer on pr3 (`make pve-backup`), which reports the newest
+archive per VM to node_exporter.
 
 ### files
 
