@@ -34,3 +34,10 @@ k8s: inventory k8s.yml
 .PHONY: pve-post
 pve-post: pve/inventory.yml pve/post-install.yml
 	ansible-playbook -i pve/inventory.yml pve/post-install.yml --ask-pass -v
+
+.PHONY: pve-template pve-vms
+pve-template: pve/inventory.yml pve/template.yml
+	ansible-playbook -i pve/inventory.yml pve/template.yml --ask-pass -v
+
+pve-vms: pve/inventory.yml pve/vms.yml
+	ansible-playbook -i pve/inventory.yml pve/vms.yml --ask-pass -v

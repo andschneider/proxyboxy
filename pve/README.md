@@ -47,3 +47,17 @@ Run only some parts with tags:
 ansible-playbook -i pve/inventory.yml pve/post-install.yml --ask-pass --tags zfs,storage
 ```
 
+## VMs
+
+VMs are Ubuntu 26.04 clones of a cloud-init template, on the `lab` VLAN with static IPs. Log in as
+`ubuntu` with `~/.ssh/homelab_ed25519`. VMID matches the last IP octet: `.100`–`.109` are core
+services (monitor, files), `.110` and up are apps and databases.
+
+```bash
+make pve-template   # download the cloud image and build template 9000
+make pve-vms        # create any VMs in pve_vms (host_vars/pr3.yml) that don't exist yet
+```
+
+| VM       | VMID | IP            | Storage |
+| -------- | ---- | ------------- | ------- |
+| postgres | 110  | `10.20.0.110` | `fast`  |

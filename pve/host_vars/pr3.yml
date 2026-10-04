@@ -49,6 +49,35 @@ zfs_arc_max_gib: 16
 
 journald_max_use: 200M
 
+# Cloud-init template (pve/template.yml). Verify the checksum against
+# https://cloud-images.ubuntu.com/releases/26.04/release/SHA256SUMS when bumping.
+pve_iso_storage: iso
+pve_iso_dataset: scratch/iso
+template_vmid: 9000
+template_name: ubuntu-2604-cloud
+template_storage: fast
+template_image_name: ubuntu-26.04-server-cloudimg-amd64.img
+template_image_url: https://cloud-images.ubuntu.com/releases/26.04/release/ubuntu-26.04-server-cloudimg-amd64.img
+template_image_sha256: 8800651811af9a85465ad1d552add729947bb16488dddb4a9b5305a3d97332b2
+template_vendor_snippet: vendor-base.yaml
+
 # Lab VMs use their own bridge on a NIC whose switch port is untagged lab.
 pve_lab_bridge: vmbr1
 pve_lab_bridge_port: nic2
+
+# VM defaults (pve/vms.yml). VMs attach to the lab bridge; VMID = last IP octet.
+# .100-.109 core services (monitor, files), .110+ apps and databases.
+vm_user: ubuntu
+vm_ssh_pubkey: "{{ lookup('env', 'HOME') }}/.ssh/homelab_ed25519.pub"
+vm_gateway: 10.20.0.1
+vm_nameserver: 192.168.1.6
+vm_searchdomain: lab.andschneider.net
+
+pve_vms:
+  - name: postgres
+    vmid: 110
+    ip: 10.20.0.110
+    cores: 4
+    memory_mb: 8192
+    storage: fast
+    disk_gb: 64

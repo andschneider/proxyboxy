@@ -1,0 +1,41 @@
+---
+- name: Check for VM {{ vm.name }}
+  ansible.builtin.command: qm status {{ vm.vmid }}
+  register: vm_status
+  changed_when: false
+  failed_when: false
+
+- name: Create VM {{ vm.name }}
+  when: vm_status.rc != 0
+  block:
+    - name: Clone template
+      ansible.builtin.command: >-
+        qm clone {{ template_vmid }} {{ vm.vmid }}
+        --name {{ vm.name }} --full 1 --storage {{ vm.storage }}
+
+    - name: Configure hardware and cloud-init
+      ansible.builtin.command: >-
+        qm set {{ vm.vmid }}
+        --cores {{ vm.cores }} --memory {{ vm.memory_mb }}
+        --net0 virtio,bridge={{ vm.bridge | default(pve_lab_bridge) }}
+        --ipconfig0 ip={{ vm.ip }}/24,gw={{ vm_gateway }}
+        --nameserver {{ vm_nameserver }} --searchdomain {{ vm_searchdomain }}
+        --ciuser {{ vm_user }} --sshkeys /root/vm_authorized_keys
+        --cicustom vendor={{ pve_iso_storage }}:snippets/{{ template_vendor_snippet }}
+        --onboot 1
+
+    - name: Grow boot disk
+      ansible.builtin.command: qm resize {{ vm.vmid }} scsi0 {{ vm.disk_gb }}G
+
+    - name: Add data disks
+      ansible.builtin.command: >-
+        qm set {{ vm.vmid }}
+        --scsi{{ idx + 1 }} {{ disk.storage }}:{{ disk.size_gb }},discard=on,iothread=1,ssd=1
+      loop: "{{ vm.data_disks | default([]) }}"
+      loop_control:
+        loop_var: disk
+        index_var: idx
+        label: "scsi{{ idx + 1 }} {{ disk.storage }}:{{ disk.size_gb }}G"
+
+    - name: Start VM
+      ansible.builtin.command: qm start {{ vm.vmid }}
