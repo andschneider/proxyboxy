@@ -1,12 +1,24 @@
 ---
 - name: Check for VM {{ vm.name }}
-  ansible.builtin.command: qm status {{ vm.vmid }}
-  register: vm_status
+  ansible.builtin.command: qm config {{ vm.vmid }}
+  register: vm_config
   changed_when: false
   failed_when: false
 
+- name: Refuse to reuse a VMID held by another VM
+  ansible.builtin.fail:
+    msg: >-
+      VMID {{ vm.vmid }} already belongs to
+      '{{ vm_config.stdout | regex_search('^name: (.*)$', '\1', multiline=True) | first }}',
+      not '{{ vm.name }}'. Fix pve_vms.
+  when:
+    - vm_config.rc == 0
+    - "('name: ' ~ vm.name) not in vm_config.stdout_lines"
+
+# A failure after cloning destroys the half-built VM so the next run starts
+# clean instead of skipping it.
 - name: Create VM {{ vm.name }}
-  when: vm_status.rc != 0
+  when: vm_config.rc != 0
   block:
     - name: Clone template
       ansible.builtin.command: >-
@@ -39,3 +51,17 @@
 
     - name: Start VM
       ansible.builtin.command: qm start {{ vm.vmid }}
+
+  rescue:
+    - name: Destroy half-built VM {{ vm.name }}
+      ansible.builtin.shell: |
+        qm stop {{ vm.vmid }} --skiplock 1 || true
+        qm destroy {{ vm.vmid }} --purge 1
+      failed_when: false
+
+    - name: Report provisioning failure
+      ansible.builtin.fail:
+        msg: >-
+          Creating {{ vm.name }} failed at '{{ ansible_failed_task.name }}':
+          {{ ansible_failed_result.stderr | default(ansible_failed_result.msg) | default('') }}.
+          The partial VM was destroyed; fix the cause and re-run.

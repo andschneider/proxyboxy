@@ -37,13 +37,24 @@
         mode: "0644"
 
     - name: Check for template
-      ansible.builtin.command: qm status {{ template_vmid }}
-      register: template_status
+      ansible.builtin.command: qm config {{ template_vmid }}
+      register: template_config
       changed_when: false
       failed_when: false
 
+    - name: Refuse to use a VMID that isn't the finished template
+      ansible.builtin.fail:
+        msg: >-
+          VMID {{ template_vmid }} exists but isn't a template (a failed build
+          or an unrelated VM). Check it, remove it with
+          'qm destroy {{ template_vmid }} --purge', and re-run.
+      when:
+        - template_config.rc == 0
+        - "'template: 1' not in template_config.stdout_lines"
+
+    # A failure partway destroys the shell so the next run starts clean.
     - name: Create template
-      when: template_status.rc != 0
+      when: template_config.rc != 0
       block:
         - name: Create VM shell
           ansible.builtin.command: >-
@@ -51,7 +62,7 @@
             --name {{ template_name }}
             --ostype l26 --cpu host --cores 2 --memory 2048
             --scsihw virtio-scsi-single
-            --net0 virtio,bridge=vmbr0
+            --net0 virtio,bridge={{ pve_lab_bridge }}
             --agent enabled=1
             --serial0 socket --vga serial0
 
@@ -64,3 +75,15 @@
 
         - name: Convert to template
           ansible.builtin.command: qm template {{ template_vmid }}
+
+      rescue:
+        - name: Destroy partial template
+          ansible.builtin.command: qm destroy {{ template_vmid }} --purge 1
+          failed_when: false
+
+        - name: Report template failure
+          ansible.builtin.fail:
+            msg: >-
+              Building the template failed at '{{ ansible_failed_task.name }}':
+              {{ ansible_failed_result.stderr | default(ansible_failed_result.msg) | default('') }}.
+              The partial VM was destroyed; fix the cause and re-run.
