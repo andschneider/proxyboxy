@@ -1,0 +1,50 @@
+---
+# Disks are referenced by /dev/disk/by-id so kernel renumbering (nvme0n1 vs
+# nvme2n1, sda vs sdd) can't point a pool at the wrong drive.
+zfs_pools:
+  - name: fast
+    vdev: mirror
+    disks:
+      - nvme-WDS100T3X0C-00SJG0_20390C804910
+      - nvme-WDS100T3X0C-00SJG0_20390C804929
+  - name: tank
+    vdev: mirror
+    disks:
+      - ata-CT2000MX500SSD1_2115E5975ABF
+      - ata-CT2000MX500SSD1_2115E5975C4A
+  - name: backup
+    vdev: ""
+    disks:
+      - ata-ST4000VN008-2DR166_ZGY73D0C
+  # Single 1TB MX500, no redundancy: throwaway VMs and ISOs only.
+  - name: scratch
+    vdev: ""
+    disks:
+      - ata-CT1000MX500SSD1_2052E4E1E9BB
+
+# PVE storage entries backed by the pools above.
+pve_zfs_storages:
+  - id: fast
+    pool: fast
+    content: images,rootdir
+  - id: tank
+    pool: tank
+    content: images,rootdir
+  - id: scratch
+    pool: scratch
+    content: images,rootdir
+
+# Directory storages on ZFS datasets (mounted at /<dataset>).
+pve_dir_storages:
+  - id: backup
+    dataset: backup/vzdump
+    content: backup
+    prune: keep-daily=7,keep-weekly=4,keep-monthly=6
+  - id: iso
+    dataset: scratch/iso
+    content: iso,vztmpl,snippets
+
+# 125 GiB RAM; leave the bulk for VMs.
+zfs_arc_max_gib: 16
+
+journald_max_use: 200M

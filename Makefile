@@ -27,3 +27,10 @@ harbor: install-harbor  get-harbor-certs
 ###############################
 k8s: inventory k8s.yml
 	ansible-playbook -i inventory k8s.yml -Kb -v
+
+###############################
+###           PVE           ###
+###############################
+.PHONY: pve-post
+pve-post: pve/inventory.yml pve/post-install.yml
+	ansible-playbook -i pve/inventory.yml pve/post-install.yml --ask-pass -v

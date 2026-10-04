@@ -1,0 +1,46 @@
+---
+# Post-install configuration for a fresh Proxmox VE 9 host.
+#
+#   make pve-post
+#
+# Never wipes disks. Pool creation fails if a pool disk still carries old
+# LVM/ZFS/filesystem signatures; wipe those by hand first.
+- name: Configure Proxmox VE host
+  hosts: pve
+  gather_facts: true
+
+  handlers:
+    - name: Restart journald
+      ansible.builtin.systemd_service:
+        name: systemd-journald
+        state: restarted
+
+    - name: Restart smartd
+      ansible.builtin.systemd_service:
+        name: smartmontools
+        state: restarted
+
+  tasks:
+    - name: Repositories and upgrade
+      ansible.builtin.import_tasks: tasks/repos.yml
+      tags: [repos]
+
+    - name: Reduce writes on the boot SSD
+      ansible.builtin.import_tasks: tasks/writes.yml
+      tags: [writes]
+
+    - name: ZFS pools
+      ansible.builtin.import_tasks: tasks/zfs.yml
+      tags: [zfs]
+
+    - name: PVE storage
+      ansible.builtin.import_tasks: tasks/storage.yml
+      tags: [storage]
+
+    - name: SMART monitoring
+      ansible.builtin.import_tasks: tasks/smart.yml
+      tags: [smart]
+
+    - name: Ansible API token
+      ansible.builtin.import_tasks: tasks/api-token.yml
+      tags: [token]

@@ -1,0 +1,26 @@
+---
+- name: Create journald drop-in dir
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    mode: "0755"
+
+- name: Cap journald disk usage
+  ansible.builtin.copy:
+    dest: /etc/systemd/journald.conf.d/size.conf
+    content: |
+      [Journal]
+      SystemMaxUse={{ journald_max_use }}
+    mode: "0644"
+  notify: Restart journald
+
+# HA services poll and write state constantly; they do nothing on a single
+# node. Re-enable them if this host ever joins a cluster.
+- name: Disable HA services on standalone node
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  loop:
+    - pve-ha-lrm
+    - pve-ha-crm

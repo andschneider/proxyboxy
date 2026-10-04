@@ -1,0 +1,6 @@
+---
+pve:
+  hosts:
+    pr3:
+      ansible_host: 192.168.1.7
+      ansible_user: root

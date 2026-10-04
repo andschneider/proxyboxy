@@ -1,0 +1,34 @@
+---
+- name: Read storage config
+  ansible.builtin.command: pvesm status
+  register: pve_storage_status
+  changed_when: false
+
+- name: Set existing storage ids
+  ansible.builtin.set_fact:
+    pve_storage_ids: "{{ pve_storage_status.stdout_lines[1:] | map('split') | map('first') | list }}"
+
+- name: Add ZFS VM storage
+  ansible.builtin.command: >-
+    pvesm add zfspool {{ item.id }}
+    --pool {{ item.pool }} --content {{ item.content }} --sparse 1
+  loop: "{{ pve_zfs_storages }}"
+  loop_control:
+    label: "{{ item.id }}"
+  when: item.id not in pve_storage_ids
+
+- name: Add directory storage
+  ansible.builtin.command: >-
+    pvesm add dir {{ item.id }}
+    --path /{{ item.dataset }} --is_mountpoint yes
+    --content {{ item.content }}
+    {{ ('--prune-backups ' ~ item.prune) if item.prune is defined else '' }}
+  loop: "{{ pve_dir_storages }}"
+  loop_control:
+    label: "{{ item.id }}"
+  when: item.id not in pve_storage_ids
+
+# Keep backups off the boot SSD.
+- name: Restrict local storage to ISOs, templates and snippets
+  ansible.builtin.command: pvesm set local --content iso,vztmpl,snippets
+  changed_when: false
