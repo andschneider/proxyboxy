@@ -61,3 +61,16 @@ make pve-vms        # create any VMs in pve_vms (host_vars/pr3.yml) that don't e
 | VM       | VMID | IP            | Storage |
 | -------- | ---- | ------------- | ------- |
 | postgres | 110  | `10.20.0.110` | `fast`  |
+
+### postgres
+
+PostgreSQL from the PGDG repo, reachable from `lab` and the home LAN with password auth.
+
+- Settings, allowed networks, roles and databases are in `host_vars/postgres/vars.yml`.
+- Role passwords go in an ansible-vault encrypted `host_vars/postgres/vault.yml`.
+- Needs the `community.postgresql` collection (bundled with the full `ansible` package; otherwise
+  `ansible-galaxy collection install -r pve/requirements.yml`).
+
+```bash
+make postgres
+```

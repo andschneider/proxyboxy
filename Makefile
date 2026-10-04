@@ -41,3 +41,12 @@ pve-template: pve/inventory.yml pve/template.yml
 
 pve-vms: pve/inventory.yml pve/vms.yml
 	ansible-playbook -i pve/inventory.yml pve/vms.yml --ask-pass -v
+
+###############################
+###           Lab           ###
+###############################
+# Prompts for the vault password only once a host has a vault.yml.
+.PHONY: postgres
+postgres: pve/inventory.yml pve/postgres.yml
+	ansible-playbook -i pve/inventory.yml pve/postgres.yml -v \
+		$(if $(wildcard pve/host_vars/postgres/vault.yml),--ask-vault-pass)
