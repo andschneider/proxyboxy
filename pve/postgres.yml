@@ -48,6 +48,19 @@
           Signed-By: /usr/share/keyrings/postgresql.asc
         mode: "0644"
 
+    # unattended-upgrades only covers Ubuntu's own repos by default. This adds
+    # PGDG so minor releases (18.x security and bug fixes) install on their
+    # own; a new major version is a separate package and stays manual.
+    - name: Allow unattended upgrades from PGDG
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/51unattended-upgrades-pgdg
+        content: |
+          // Managed by Ansible (pve/postgres.yml).
+          Unattended-Upgrade::Origins-Pattern {
+              "origin=apt.postgresql.org,codename=${distro_codename}-pgdg";
+          };
+        mode: "0644"
+
     # After the PGDG repo, so libpq5 (pulled in by psycopg2) comes from PGDG
     # rather than the older Ubuntu build.
     - name: Install PostgreSQL {{ postgres_version }}

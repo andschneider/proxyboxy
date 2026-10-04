@@ -70,6 +70,8 @@ PostgreSQL from the PGDG repo, reachable from `lab` and the home LAN with passwo
 
 - Settings, allowed networks, roles and databases are in `host_vars/postgres/vars.yml`.
 - Role passwords go in an ansible-vault encrypted `host_vars/postgres/vault.yml`.
+- unattended-upgrades also installs PGDG updates, so 18.x minor releases arrive on their own; a new
+  major version stays manual.
 - Needs the `community.postgresql` collection (bundled with the full `ansible` package; otherwise
   `ansible-galaxy collection install -r pve/requirements.yml`).
 
@@ -89,6 +91,7 @@ Prometheus (`:9090`, 90 day retention) and Grafana (`:3000`) on `monitor`, scrap
 
 The UDM rule `server-prometheus-scrape` must allow `10.20.0.100` to reach `10.10.0.7` on 9100 and
 9221. Grafana starts with `admin`/`admin` and asks for a new password on first login.
+unattended-upgrades also installs Grafana updates from its apt repo.
 
 Dashboards are provisioned into the Homelab folder and are read-only in the UI; use **Save as** to
 make an editable copy. Community ones (Node Exporter Full, Proxmox, PostgreSQL) come from

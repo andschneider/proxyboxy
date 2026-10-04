@@ -321,6 +321,18 @@
           Signed-By: /usr/share/keyrings/grafana.asc
         mode: "0644"
 
+    # unattended-upgrades only covers Ubuntu's own repos by default. Grafana's
+    # repo has an odd origin (". stable"), so match it by site instead.
+    - name: Allow unattended upgrades from Grafana
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/51unattended-upgrades-grafana
+        content: |
+          // Managed by Ansible (pve/monitoring.yml).
+          Unattended-Upgrade::Origins-Pattern {
+              "site=apt.grafana.com";
+          };
+        mode: "0644"
+
     - name: Install Grafana
       ansible.builtin.apt:
         name: grafana
