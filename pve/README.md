@@ -1,11 +1,22 @@
 # pve
 
-Fresh Proxmox VE 9 install on `pr3.lab.andschneider.net` (192.168.1.7).
+Fresh Proxmox VE 9 install on `pr3.lab.andschneider.net` (10.10.0.7, `lab-mgmt` VLAN 10).
+
+## Network
+
+VLANs live on the UDM Pro. The switch can't tag, so each network gets its own untagged port: `vmbr0`
+(`nic0`) is on `lab-mgmt` and carries pr3's address; `vmbr1` (`nic2`, 10G) is on `lab` with no host
+address, and VMs attach to it untagged.
+
+| VLAN           | Subnet         | Hosts                                        |
+| -------------- | -------------- | -------------------------------------------- |
+| 10, `lab-mgmt` | `10.10.0.0/24` | pr3 `10.10.0.7`, BMC `10.10.0.8`; no DHCP    |
+| 20, `lab`      | `10.20.0.0/24` | VMs; DHCP `.10`–`.99`, statics `.100`–`.254` |
 
 ## Disk layout
 
 | Disk                  | by-id                                | Use                                      |
-|-----------------------|--------------------------------------|------------------------------------------|
+| --------------------- | ------------------------------------ | ---------------------------------------- |
 | Samsung 970 EVO 500GB | `nvme-Samsung_SSD_970_EVO_500GB_...` | Boot/OS (ext4, installer)                |
 | 2x WD SN750 1TB       | `nvme-WDS100T3X0C-00SJG0_*`          | `fast` ZFS mirror (VMs)                  |
 | 2x Crucial MX500 2TB  | `ata-CT2000MX500SSD1_*`              | `tank` ZFS mirror (VMs)                  |
@@ -35,3 +46,4 @@ Run only some parts with tags:
 ```bash
 ansible-playbook -i pve/inventory.yml pve/post-install.yml --ask-pass --tags zfs,storage
 ```
+

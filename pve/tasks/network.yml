@@ -1,0 +1,19 @@
+---
+# Lab VMs get their own bridge on a dedicated NIC. The switch port is untagged
+# in the lab VLAN, so VMs need no tag and the host has no address on it.
+- name: Add lab bridge
+  ansible.builtin.blockinfile:
+    path: /etc/network/interfaces
+    marker: "# {mark} ANSIBLE lab bridge"
+    block: |
+      auto {{ pve_lab_bridge }}
+      iface {{ pve_lab_bridge }} inet manual
+      	bridge-ports {{ pve_lab_bridge_port }}
+      	bridge-stp off
+      	bridge-fd 0
+      #lab VLAN, untagged on the switch port
+  register: pve_lab_bridge_block
+
+- name: Apply network config
+  ansible.builtin.command: ifreload -a
+  when: pve_lab_bridge_block is changed

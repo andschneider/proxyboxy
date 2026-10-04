@@ -25,6 +25,10 @@
       ansible.builtin.import_tasks: tasks/repos.yml
       tags: [repos]
 
+    - name: Lab network bridge
+      ansible.builtin.import_tasks: tasks/network.yml
+      tags: [network]
+
     - name: Reduce writes on the boot SSD
       ansible.builtin.import_tasks: tasks/writes.yml
       tags: [writes]

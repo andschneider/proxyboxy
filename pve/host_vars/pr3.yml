@@ -48,3 +48,7 @@ pve_dir_storages:
 zfs_arc_max_gib: 16
 
 journald_max_use: 200M
+
+# Lab VMs use their own bridge on a NIC whose switch port is untagged lab.
+pve_lab_bridge: vmbr1
+pve_lab_bridge_port: nic2
