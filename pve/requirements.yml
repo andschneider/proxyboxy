@@ -1,6 +1,6 @@
 ---
-# Install with: ansible-galaxy collection install -r pve/requirements.yml
-# (The full `ansible` package already bundles these.)
+# Install with: uv run ansible-galaxy collection install -r pve/requirements.yml
+# (The `ansible` package in uv.lock already bundles all but cloud.terraform.)
 collections:
   - name: community.postgresql
     version: ">=4.0.0"

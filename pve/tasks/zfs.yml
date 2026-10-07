@@ -3,7 +3,7 @@
   ansible.builtin.copy:
     dest: /etc/modprobe.d/zfs.conf
     content: |
-      options zfs zfs_arc_max={{ zfs_arc_max_gib * 1024 ** 3 }}
+      options zfs zfs_arc_max={{ zfs_arc_max_gib * 1024**3 }}
     mode: "0644"
 
 - name: Apply ARC cap without reboot
@@ -11,7 +11,7 @@
     set -euo pipefail
     modprobe zfs
     param=/sys/module/zfs/parameters/zfs_arc_max
-    want={{ zfs_arc_max_gib * 1024 ** 3 }}
+    want={{ zfs_arc_max_gib * 1024**3 }}
     [ "$(cat "$param")" = "$want" ] && exit 0
     echo "$want" > "$param"
     echo changed

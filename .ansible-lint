@@ -1,0 +1,18 @@
+---
+# CI lints pve/ only (`ansible-lint pve/`); the older playbooks at the repo
+# root predate it.
+exclude_paths:
+  - pve/terraform/
+  - pve/secrets/
+  # Prometheus rules and Grafana dashboards, not Ansible.
+  - pve/files/
+  # Encrypted, and CI has no vault password.
+  - pve/host_vars/*/vault.yml
+
+skip_list:
+  # Commands here are guarded by a `when` (or an explicit check task) and
+  # always change something when they do run.
+  - no-changed-when
+  # `when: x is changed` is used for steps that must run right away, in
+  # order, not at the end of the play like handlers.
+  - no-handler

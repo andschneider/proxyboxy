@@ -5,6 +5,7 @@
 .idea/
 
 venv/
+.venv/
 
 roles/k8s/files/ca.crt
 
@@ -15,3 +16,6 @@ pve/secrets/
 .terraform/
 *.tfstate
 *.tfstate.*
+
+# ansible-lint cache
+.ansible/

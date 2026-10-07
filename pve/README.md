@@ -74,7 +74,7 @@ the Terraform state, so their IPs live only in the `.tf` files.
 - State is local (`terraform/terraform.tfstate`, gitignored). Back it up: losing it means
   re-importing every VM.
 - Needs the `cloud.terraform` collection:
-  `ansible-galaxy collection install -r pve/requirements.yml`.
+  `uv run ansible-galaxy collection install -r pve/requirements.yml`.
 
 ```bash
 terraform -chdir=pve/terraform init
@@ -95,8 +95,7 @@ PostgreSQL from the PGDG repo, reachable from `lab` and the home LAN with passwo
 - Role passwords go in an ansible-vault encrypted `host_vars/postgres/vault.yml`.
 - unattended-upgrades also installs PGDG updates, so 18.x minor releases arrive on their own; a new
   major version stays manual.
-- Needs the `community.postgresql` collection (bundled with the full `ansible` package; otherwise
-  `ansible-galaxy collection install -r pve/requirements.yml`).
+- Uses the `community.postgresql` collection, bundled with the `ansible` package in `uv.lock`.
 
 ```bash
 make postgres
