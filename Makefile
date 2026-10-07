@@ -45,21 +45,26 @@ pve-vms: pve/inventory.yml pve/vms.yml
 ###############################
 ###           Lab           ###
 ###############################
+# Terraform-managed VMs come from the second inventory (pve/terraform). Fail if
+# it can't be read, rather than quietly running without those hosts.
+LAB_INVENTORY = -i pve/inventory.yml -i pve/terraform-inventory.yml
+export ANSIBLE_INVENTORY_UNPARSED_FAILED = True
+
 # Prompts for the vault password only once a host has a vault.yml.
 .PHONY: postgres
 postgres: pve/inventory.yml pve/postgres.yml
-	ansible-playbook -i pve/inventory.yml pve/postgres.yml -v \
+	ansible-playbook $(LAB_INVENTORY) pve/postgres.yml -v \
 		$(if $(wildcard pve/host_vars/postgres/vault.yml),--ask-vault-pass)
 
 # --ask-pass is for root on pr3; lab VMs use the SSH key.
 .PHONY: monitoring
 monitoring: pve/inventory.yml pve/monitoring.yml
-	ansible-playbook -i pve/inventory.yml pve/monitoring.yml --ask-pass -v \
+	ansible-playbook $(LAB_INVENTORY) pve/monitoring.yml --ask-pass -v \
 		$(if $(wildcard pve/host_vars/*/vault.yml),--ask-vault-pass)
 
 .PHONY: files
 files: pve/inventory.yml pve/files.yml
-	ansible-playbook -i pve/inventory.yml pve/files.yml --ask-vault-pass -v
+	ansible-playbook $(LAB_INVENTORY) pve/files.yml --ask-vault-pass -v
 
 .PHONY: pve-backup
 pve-backup: pve/inventory.yml pve/backup.yml

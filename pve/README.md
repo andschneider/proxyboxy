@@ -58,11 +58,39 @@ make pve-template   # download the cloud image and build template 9000
 make pve-vms        # create any VMs in pve_vms (host_vars/pr3.yml) that don't exist yet
 ```
 
-| VM       | VMID | IP            | Storage |
-|----------|------|---------------|---------|
-| monitor  | 100  | `10.20.0.100` | `fast`  |
-| files    | 101  | `10.20.0.101` | `fast`  |
-| postgres | 110  | `10.20.0.110` | `fast`  |
+| VM       | VMID | IP            | Storage | Managed by            |
+|----------|------|---------------|---------|-----------------------|
+| monitor  | 100  | `10.20.0.100` | `fast`  | `pve_vms`             |
+| files    | 101  | `10.20.0.101` | `fast`  | `pve_vms`             |
+| postgres | 110  | `10.20.0.110` | `fast`  | Terraform (see below) |
+
+### Terraform
+
+VMs are moving one at a time from `pve_vms` to Terraform in `terraform/`, which can also change
+existing VMs (CPU, memory, disk size) instead of only creating missing ones. postgres is the first.
+Terraform-managed VMs reach Ansible through `terraform-inventory.yml`, which reads `ansible_host`
+resources from the Terraform state, so their IPs live only in the `.tf` files.
+
+- Uses the `ansible@pve!automation` token saved in `secrets/` by the post-install playbook.
+- State is local (`terraform/terraform.tfstate`, gitignored). Back it up: losing it means
+  re-importing every VM.
+- Needs the `cloud.terraform` collection:
+  `ansible-galaxy collection install -r pve/requirements.yml`.
+
+```bash
+terraform -chdir=pve/terraform init
+terraform -chdir=pve/terraform plan
+terraform -chdir=pve/terraform apply
+```
+
+To move a VM over, write its resource and remove it from `pve_vms` and `inventory.yml`. Then
+either:
+
+- **Recreate it** (no data to keep): give the resource a `clone` block, destroy the old VM with
+  `qm destroy <vmid> --purge`, apply, and re-run its playbooks.
+- **Keep it**: add an `import` block instead of `clone` (a clone block on an imported VM forces a
+  replacement), and plan until there are no changes before applying. Delete the `import` block
+  afterwards.
 
 ### postgres
 

@@ -10,3 +10,8 @@ roles/k8s/files/ca.crt
 
 # PVE API token secrets
 pve/secrets/
+
+# Terraform (commit .terraform.lock.hcl)
+.terraform/
+*.tfstate
+*.tfstate.*

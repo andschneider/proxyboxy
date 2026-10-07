@@ -6,6 +6,7 @@ pve:
       ansible_user: root
 
 # VMs cloned from the cloud-init template (see pve_vms in host_vars/pr3.yml).
+# Terraform-managed VMs join this group from terraform-inventory.yml.
 lab:
   vars:
     ansible_user: ubuntu
@@ -15,5 +16,3 @@ lab:
       ansible_host: 10.20.0.100
     files:
       ansible_host: 10.20.0.101
-    postgres:
-      ansible_host: 10.20.0.110
