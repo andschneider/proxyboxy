@@ -1,4 +1,4 @@
-# Shared VM settings, matching the vm_* defaults in host_vars/pr3.yml.
+# Shared settings for every VM.
 locals {
   node_name       = "pr3"
   lab_bridge      = "vmbr1"

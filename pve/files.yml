@@ -1,6 +1,6 @@
 ---
 # NFS and SMB file server on the files VM, sharing one folder on its data disk.
-# Create the VM first with `make pve-vms`.
+# Create the VM first with Terraform (pve/terraform).
 #
 #   make files
 - name: File server

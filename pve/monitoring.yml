@@ -1,6 +1,6 @@
 ---
 # Metrics: exporters on pr3 and the lab VMs, Prometheus and Grafana on monitor.
-# Create the monitor VM first with `make pve-vms`.
+# Create the monitor VM first with Terraform (pve/terraform).
 #
 #   make monitoring
 - name: pr3 exporters

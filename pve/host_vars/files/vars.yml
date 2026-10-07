@@ -1,5 +1,6 @@
 ---
-# The data disk from pve_vms (scsi1), mounted here and shared over NFS and SMB.
+# The data disk (scsi1 in pve/terraform/files.tf), mounted here and shared over
+# NFS and SMB.
 share_disk: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi1
 share_path: /srv/share
 
