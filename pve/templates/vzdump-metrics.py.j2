@@ -1,0 +1,55 @@
+#!/usr/bin/python3
+# Managed by Ansible (pve/backup.yml).
+#
+# Writes the time of each VM's newest vzdump backup for node_exporter's
+# textfile collector, so Prometheus can alert on stale or missing backups.
+# VMs with no backup at all report 0.
+import glob
+import json
+import os
+import re
+import subprocess
+import tempfile
+
+DUMP_DIR = "{{ pve_backup_dump_dir }}"
+OUT = "/var/lib/prometheus/node-exporter/vzdump.prom"
+# VMIDs left out of the backup job on purpose.
+EXCLUDE = {{ pve_backup_job.exclude | string | split(',') | map('trim') | select | list | to_json }}
+# Finished archives only; vzdump writes to a .dat/.tmp name until done.
+ARCHIVE = re.compile(r"^vzdump-(?:qemu|lxc)-(\d+)-.*\.(?:vma|tar)(?:\.(?:zst|gz|lzo))?$")
+
+guests = json.loads(
+    subprocess.run(
+        ["pvesh", "get", "/cluster/resources", "--type", "vm", "--output-format", "json"],
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout
+)
+
+newest = {}
+for path in glob.glob(os.path.join(DUMP_DIR, "vzdump-*")):
+    match = ARCHIVE.match(os.path.basename(path))
+    if match:
+        vmid = match.group(1)
+        newest[vmid] = max(newest.get(vmid, 0), os.path.getmtime(path))
+
+lines = [
+    "# HELP vzdump_last_backup_timestamp_seconds Time of the newest vzdump archive per guest.",
+    "# TYPE vzdump_last_backup_timestamp_seconds gauge",
+]
+for guest in sorted(guests, key=lambda g: g["vmid"]):
+    vmid = str(guest["vmid"])
+    if guest.get("template") or vmid in EXCLUDE:
+        continue
+    name = guest.get("name", "").replace("\\", "").replace('"', "")
+    lines.append(
+        f'vzdump_last_backup_timestamp_seconds{% raw %}{{vmid="{vmid}",name="{name}"}}{% endraw %} {newest.get(vmid, 0):.0f}'
+    )
+
+# Atomic replace so node_exporter never reads a half-written file.
+fd, tmp = tempfile.mkstemp(dir=os.path.dirname(OUT), prefix=".vzdump.")
+with os.fdopen(fd, "w") as f:
+    f.write("\n".join(lines) + "\n")
+os.chmod(tmp, 0o644)
+os.replace(tmp, OUT)

@@ -27,3 +27,40 @@ harbor: install-harbor  get-harbor-certs
 ###############################
 k8s: inventory k8s.yml
 	ansible-playbook -i inventory k8s.yml -Kb -v
+
+###############################
+###           PVE           ###
+###############################
+.PHONY: pve-post
+pve-post: pve/inventory.yml pve/post-install.yml
+	ansible-playbook -i pve/inventory.yml pve/post-install.yml --ask-pass -v
+
+.PHONY: pve-template pve-vms
+pve-template: pve/inventory.yml pve/template.yml
+	ansible-playbook -i pve/inventory.yml pve/template.yml --ask-pass -v
+
+pve-vms: pve/inventory.yml pve/vms.yml
+	ansible-playbook -i pve/inventory.yml pve/vms.yml --ask-pass -v
+
+###############################
+###           Lab           ###
+###############################
+# Prompts for the vault password only once a host has a vault.yml.
+.PHONY: postgres
+postgres: pve/inventory.yml pve/postgres.yml
+	ansible-playbook -i pve/inventory.yml pve/postgres.yml -v \
+		$(if $(wildcard pve/host_vars/postgres/vault.yml),--ask-vault-pass)
+
+# --ask-pass is for root on pr3; lab VMs use the SSH key.
+.PHONY: monitoring
+monitoring: pve/inventory.yml pve/monitoring.yml
+	ansible-playbook -i pve/inventory.yml pve/monitoring.yml --ask-pass -v \
+		$(if $(wildcard pve/host_vars/*/vault.yml),--ask-vault-pass)
+
+.PHONY: files
+files: pve/inventory.yml pve/files.yml
+	ansible-playbook -i pve/inventory.yml pve/files.yml --ask-vault-pass -v
+
+.PHONY: pve-backup
+pve-backup: pve/inventory.yml pve/backup.yml
+	ansible-playbook -i pve/inventory.yml pve/backup.yml --ask-pass -v

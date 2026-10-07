@@ -1,0 +1,39 @@
+---
+# Lab VMs get their own bridge on a dedicated NIC. The switch port is untagged
+# in the lab VLAN, so VMs need no tag and the host has no address on it.
+#
+# The bridge is created through the PVE API so Proxmox owns the stanza in
+# /etc/network/interfaces and the GUI shows it.
+- name: Check that the lab bridge port exists
+  ansible.builtin.assert:
+    that: pve_lab_bridge_port in ansible_facts['interfaces']
+    fail_msg: "{{ pve_lab_bridge_port }} not found on {{ inventory_hostname }}"
+
+# Earlier versions wrote the bridge with blockinfile; drop that block so PVE
+# can manage the stanza instead.
+- name: Remove legacy Ansible-managed bridge block
+  ansible.builtin.blockinfile:
+    path: /etc/network/interfaces
+    marker: "# {mark} ANSIBLE lab bridge"
+    state: absent
+  register: pve_lab_bridge_legacy
+
+- name: Check for lab bridge
+  ansible.builtin.command: pvesh get /nodes/{{ ansible_facts['hostname'] }}/network/{{ pve_lab_bridge }}
+  register: pve_lab_bridge_check
+  changed_when: false
+  failed_when: false
+
+- name: Create lab bridge
+  ansible.builtin.command: >-
+    pvesh create /nodes/{{ ansible_facts['hostname'] }}/network
+    --iface {{ pve_lab_bridge }} --type bridge
+    --bridge_ports {{ pve_lab_bridge_port }} --autostart 1
+    --comments "lab VLAN, untagged on the switch port"
+  when: pve_lab_bridge_check.rc != 0
+  register: pve_lab_bridge_create
+
+# PVE validates the pending config before swapping it in and reloading.
+- name: Apply network config
+  ansible.builtin.command: pvesh set /nodes/{{ ansible_facts['hostname'] }}/network
+  when: pve_lab_bridge_create is changed or pve_lab_bridge_legacy is changed

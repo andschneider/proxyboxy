@@ -1,0 +1,183 @@
+---
+# NFS and SMB file server on the files VM, sharing one folder on its data disk.
+# Create the VM first with `make pve-vms`.
+#
+#   make files
+- name: File server
+  hosts: files
+  become: true
+  # Run queued restarts even if a later task fails, so a re-run doesn't
+  # find the config already in place and skip the restart.
+  force_handlers: true
+
+  vars:
+    share_nfs_opts: >-
+      rw,sync,no_subtree_check,all_squash,anonuid={{ share_uid }},anongid={{ share_uid }}
+
+  handlers:
+    - name: Reload exports
+      ansible.builtin.command: exportfs -ra
+
+    - name: Restart nfs-server
+      ansible.builtin.systemd_service:
+        name: nfs-server
+        state: restarted
+
+    # Restart, not reload: smbd only applies listening ports (smb ports,
+    # NetBIOS) at startup.
+    - name: Restart samba
+      ansible.builtin.systemd_service:
+        name: smbd
+        state: restarted
+
+  tasks:
+    - name: Check the SMB password is set
+      ansible.builtin.assert:
+        that: vault_share_smb_password is defined
+        fail_msg: >-
+          vault_share_smb_password is missing. Create it with
+          'ansible-vault create pve/host_vars/files/vault.yml'.
+        quiet: true
+
+    - name: Install NFS and Samba
+      ansible.builtin.apt:
+        name:
+          - nfs-kernel-server
+          - samba
+        update_cache: true
+
+    # Data disk: formatted once, only if it's completely blank. Never wipes.
+    - name: Check data disk for a filesystem
+      ansible.builtin.command: blkid -o value -s TYPE {{ share_disk }}
+      register: share_disk_fs
+      changed_when: false
+      failed_when: share_disk_fs.rc not in [0, 2]
+
+    - name: Check data disk for partitions
+      ansible.builtin.command: lsblk -nro TYPE {{ share_disk }}
+      register: share_disk_parts
+      changed_when: false
+
+    - name: Refuse to format a disk that isn't blank
+      ansible.builtin.fail:
+        msg: >-
+          {{ share_disk }} has no ext4 filesystem but isn't blank
+          (blkid: '{{ share_disk_fs.stdout }}', lsblk: {{ share_disk_parts.stdout_lines }}).
+          Check it by hand; this playbook won't wipe it.
+      when:
+        - share_disk_fs.stdout != 'ext4'
+        - share_disk_fs.stdout != '' or 'part' in share_disk_parts.stdout_lines
+
+    # No reserved blocks: root doesn't need emergency space on a data disk.
+    - name: Format data disk
+      ansible.builtin.command: mkfs.ext4 -L share -m 0 {{ share_disk }}
+      when: share_disk_fs.stdout == ''
+
+    - name: Mount data disk
+      ansible.posix.mount:
+        path: "{{ share_path }}"
+        src: "{{ share_disk }}"
+        fstype: ext4
+        opts: defaults,noatime
+        state: mounted
+
+    - name: Create share group
+      ansible.builtin.group:
+        name: "{{ share_user }}"
+        gid: "{{ share_uid }}"
+        system: true
+
+    - name: Create share user
+      ansible.builtin.user:
+        name: "{{ share_user }}"
+        uid: "{{ share_uid }}"
+        group: "{{ share_user }}"
+        system: true
+        shell: /usr/sbin/nologin
+        create_home: false
+
+    # setgid keeps new files in the share group.
+    - name: Set share ownership
+      ansible.builtin.file:
+        path: "{{ share_path }}"
+        state: directory
+        owner: "{{ share_user }}"
+        group: "{{ share_user }}"
+        mode: "2775"
+
+    # NFSv4 only: one port (2049), no rpcbind or mountd exposed.
+    - name: Create NFS config drop-in dir
+      ansible.builtin.file:
+        path: /etc/nfs.conf.d
+        state: directory
+        mode: "0755"
+
+    - name: Disable NFSv3
+      ansible.builtin.copy:
+        dest: /etc/nfs.conf.d/90-ansible.conf
+        content: |
+          # Managed by Ansible (pve/files.yml).
+          [nfsd]
+          vers3=n
+        mode: "0644"
+      notify: Restart nfs-server
+
+    - name: Mask rpcbind
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        state: stopped
+        masked: true
+      loop:
+        - rpcbind.service
+        - rpcbind.socket
+      notify: Restart nfs-server
+
+    - name: Configure NFS exports
+      ansible.builtin.copy:
+        dest: /etc/exports
+        content: |
+          # Managed by Ansible (pve/files.yml).
+          # Every client maps to {{ share_user }} ({{ share_uid }}).
+          {{ share_path }} {{ share_nfs_clients | map('regex_replace', '$', '(' ~ share_nfs_opts ~ ')') | join(' ') }}
+        mode: "0644"
+      notify: Reload exports
+
+    - name: Start NFS server
+      ansible.builtin.systemd_service:
+        name: nfs-server
+        state: started
+        enabled: true
+
+    - name: Configure Samba
+      ansible.builtin.template:
+        src: templates/smb.conf.j2
+        dest: /etc/samba/smb.conf
+        mode: "0644"
+        validate: testparm -s %s
+      notify: Restart samba
+
+    # smbpasswd -a adds the user or updates its password, so this runs every
+    # time; there's no way to compare the stored hash.
+    - name: Set SMB password
+      ansible.builtin.command: smbpasswd -s -a {{ share_user }}
+      args:
+        stdin: "{{ share_smb_password }}\n{{ share_smb_password }}"
+      changed_when: false
+      no_log: true
+
+    - name: Gather services
+      ansible.builtin.service_facts:
+
+    # NetBIOS is off, so nmbd isn't needed.
+    - name: Disable nmbd
+      ansible.builtin.systemd_service:
+        name: nmbd
+        state: stopped
+        enabled: false
+      when: "'nmbd.service' in ansible_facts.services"
+
+    - name: Start Samba
+      ansible.builtin.systemd_service:
+        name: smbd
+        state: started
+        enabled: true

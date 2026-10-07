@@ -1,0 +1,145 @@
+---
+- name: Cap ZFS ARC size
+  ansible.builtin.copy:
+    dest: /etc/modprobe.d/zfs.conf
+    content: |
+      options zfs zfs_arc_max={{ zfs_arc_max_gib * 1024 ** 3 }}
+    mode: "0644"
+
+- name: Apply ARC cap without reboot
+  ansible.builtin.shell: |
+    set -euo pipefail
+    modprobe zfs
+    param=/sys/module/zfs/parameters/zfs_arc_max
+    want={{ zfs_arc_max_gib * 1024 ** 3 }}
+    [ "$(cat "$param")" = "$want" ] && exit 0
+    echo "$want" > "$param"
+    echo changed
+  args:
+    executable: /bin/bash
+  register: zfs_arc_apply
+  changed_when: "'changed' in zfs_arc_apply.stdout"
+
+- name: List existing pools
+  ansible.builtin.command: zpool list -H -o name
+  register: zfs_existing
+  changed_when: false
+
+- name: Select pools to create
+  ansible.builtin.set_fact:
+    zfs_new_pools: "{{ zfs_pools | rejectattr('name', 'in', zfs_existing.stdout_lines) | list }}"
+    zfs_new_disks: >-
+      {{ zfs_pools | rejectattr('name', 'in', zfs_existing.stdout_lines)
+         | map(attribute='disks') | flatten | list }}
+
+- name: Check that pool disks are present
+  ansible.builtin.stat:
+    path: "/dev/disk/by-id/{{ item }}"
+  loop: "{{ zfs_new_disks }}"
+  register: zfs_disk_stat
+  failed_when: not zfs_disk_stat.stat.exists
+
+- name: Find pools that exist on disk but aren't imported
+  ansible.builtin.shell: |
+    set -euo pipefail
+    if out=$(zpool import 2>&1); then
+      awk '$1 == "pool:" { print $2 }' <<< "$out"
+    elif grep -q "no pools available to import" <<< "$out"; then
+      exit 0
+    else
+      echo "$out" >&2
+      exit 1
+    fi
+  args:
+    executable: /bin/bash
+  register: zfs_importable
+  changed_when: false
+
+- name: Refuse to recreate pools that already exist on disk
+  ansible.builtin.fail:
+    msg: >-
+      Pool {{ item }} exists on disk but isn't imported. Run
+      'zpool import {{ item }}' to keep its data, or wipe its disks to start over.
+  loop: "{{ zfs_new_pools | map(attribute='name') | select('in', zfs_importable.stdout_lines) | list }}"
+
+# Protect every disk backing /, /boot/efi or any LVM PV (the pve VG).
+- name: Never touch disks the OS runs on
+  ansible.builtin.shell: |
+    set -euo pipefail
+    protected=$(
+      {
+        findmnt -no SOURCE /
+        if mountpoint -q /boot/efi; then findmnt -no SOURCE /boot/efi; fi
+        pvs --noheadings -o pv_name
+      } | xargs -n1 lsblk -rsnpo NAME,TYPE | awk '$2 == "disk" { print $1 }' | sort -u
+    )
+    if [ -z "$protected" ]; then
+      echo "could not determine OS disks" >&2
+      exit 1
+    fi
+    fail=0
+    for id in {{ zfs_new_disks | map('quote') | join(' ') }}; do
+      # Resolve partitions to their parent disk before comparing.
+      for target in $(lsblk -rsnpo NAME,TYPE "$(readlink -f "/dev/disk/by-id/$id")" | awk '$2 == "disk" { print $1 }'); do
+        if grep -qxF "$target" <<< "$protected"; then
+          echo "$id ($target) backs the running OS" >&2
+          fail=1
+        fi
+      done
+    done
+    exit "$fail"
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: Find existing signatures on pool disks
+  ansible.builtin.shell: |
+    set -euo pipefail
+    disk=$(readlink -f /dev/disk/by-id/{{ item | quote }})
+    for dev in $(lsblk -rnpo NAME "$disk"); do
+      wipefs --noheadings --output TYPE "$dev"
+    done | sort -u | tr '\n' ' '
+  args:
+    executable: /bin/bash
+  loop: "{{ zfs_new_disks }}"
+  register: zfs_disk_sigs
+  changed_when: false
+
+- name: Refuse to create pools over existing data
+  ansible.builtin.fail:
+    msg: >-
+      {{ item.item }} still has signatures ({{ item.stdout | trim }}).
+      {{ 'If it holds a ZFS pool you want, import it instead. ' if 'zfs_member' in item.stdout else '' }}Otherwise
+      wipe it manually, then re-run.
+  loop: "{{ zfs_disk_sigs.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: item.stdout | trim | length > 0
+
+- name: Create pools
+  ansible.builtin.command: >-
+    zpool create
+    -o ashift=12 -o autotrim=on
+    -O compression=lz4 -O atime=off -O xattr=sa -O acltype=posixacl
+    -m /{{ item.name }} {{ item.name }} {{ item.vdev }}
+    {{ item.disks | map('regex_replace', '^', '/dev/disk/by-id/') | join(' ') }}
+  loop: "{{ zfs_new_pools }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+# Same unit PVE enables when a pool is created from the GUI.
+- name: Import pools at boot
+  ansible.builtin.systemd_service:
+    name: "zfs-import@{{ item.name }}.service"
+    enabled: true
+  loop: "{{ zfs_pools }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Create datasets for directory storages
+  ansible.builtin.command: zfs create -p {{ item.dataset }}
+  args:
+    creates: "/{{ item.dataset }}"
+  loop: "{{ pve_dir_storages }}"
+  loop_control:
+    label: "{{ item.dataset }}"

@@ -1,0 +1,251 @@
+# Prometheus alert rules (pve/monitoring.yml copies this to the monitor VM).
+# severity: critical repeats every 4h until fixed; warning once a day.
+# Thresholds here match the pr3 hardware and overview dashboards.
+groups:
+  - name: availability
+    rules:
+      # Always firing. Alertmanager pings it to an outside dead man's switch,
+      # which notifies if the pings stop (monitor VM, Prometheus or
+      # Alertmanager down). Never sent to ntfy.
+      - alert: Watchdog
+        expr: vector(1)
+        labels:
+          severity: none
+        annotations:
+          summary: Alerting pipeline heartbeat
+
+      - alert: TargetDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.instance }} ({{ $labels.job }}) is not responding"
+          description: Prometheus hasn't been able to scrape it for 5 minutes.
+
+      - alert: VmNotRunning
+        expr: pve_up{id=~"qemu/.*"} == 0 and on (id) pve_guest_info{template="0"}
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "VM {{ $labels.id }} is not running"
+          description: Proxmox reports the VM as stopped for 5 minutes.
+
+      - alert: PostgresDown
+        expr: pg_up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: PostgreSQL is down on {{ $labels.instance }}
+          description: postgres_exporter can't connect to the server.
+
+  - name: backups
+    rules:
+      # A VM that has never been backed up (timestamp 0) gets a grace period
+      # until it has been running for 36h, so a new VM doesn't alert before
+      # its first nightly backup. (A stopped VM fires VmNotRunning instead.)
+      - alert: BackupStale
+        expr: >-
+          (time() - vzdump_last_backup_timestamp_seconds > 36 * 3600)
+          unless on (vmid) (
+            vzdump_last_backup_timestamp_seconds == 0
+            and on (vmid)
+              label_replace(pve_uptime_seconds{id=~"qemu/.*"} < 36 * 3600, "vmid", "$1", "id", "qemu/(.*)")
+          )
+        for: 30m
+        labels:
+          severity: critical
+        annotations:
+          summary: "VM {{ $labels.name }} ({{ $labels.vmid }}) has no backup in 36h"
+          description: >-
+            The newest vzdump backup is {{ $value | humanizeDuration }} old. Check the nightly job
+            under Datacenter → Backup.
+
+      - alert: BackupMetricsMissing
+        expr: absent(vzdump_last_backup_timestamp_seconds)
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: Backup age metrics are missing
+          description: The vzdump-metrics timer on pr3 isn't writing its file, so BackupStale can't fire.
+
+  - name: storage
+    rules:
+      - alert: ZfsPoolNotOnline
+        expr: node_zfs_zpool_state{state="online"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: ZFS pool {{ $labels.zpool }} is not ONLINE on {{ $labels.instance }}
+          description: Run 'zpool status {{ $labels.zpool }}' on the host.
+
+      - alert: SmartUnhealthy
+        expr: smartmon_device_smart_healthy == 0
+        labels:
+          severity: critical
+        annotations:
+          summary: SMART reports {{ $labels.disk }} on {{ $labels.instance }} as failing
+          description: Run 'smartctl -a {{ $labels.disk }}' and plan a replacement.
+
+      - alert: NvmeCriticalWarning
+        expr: nvme_critical_warning > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: NVMe {{ $labels.device }} on {{ $labels.instance }} reports a critical warning
+          description: Run 'nvme smart-log /dev/{{ $labels.device }}'.
+
+      # MX500s briefly flip pending-sector counts between 0 and 1, and an old
+      # remapped sector is no news, so alert on counts rising, sustained, or on
+      # a high total.
+      - alert: DiskErrorsIncreasing
+        expr: >-
+          sum by (instance, disk) ({__name__=~"smartmon_(reallocated_sector_ct|current_pending_sector|offline_uncorrectable|reported_uncorrect)_raw_value"})
+          - sum by (instance, disk) ({__name__=~"smartmon_(reallocated_sector_ct|current_pending_sector|offline_uncorrectable|reported_uncorrect)_raw_value"} offset 24h)
+          > 0
+          or increase(nvme_media_errors_total[24h]) > 0
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk errors rising on {{ $labels.instance }} {{ $labels.disk }}{{ $labels.device }}"
+          description: >-
+            Bad, pending or uncorrectable sectors (SATA) or media errors (NVMe) went up by
+            {{ $value }} in the last 24h. A disk that keeps growing errors is failing.
+
+      - alert: DiskErrorCountHigh
+        expr: >-
+          sum by (instance, disk) ({__name__=~"smartmon_(reallocated_sector_ct|current_pending_sector|offline_uncorrectable|reported_uncorrect)_raw_value"}) >= 10
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.disk }} on {{ $labels.instance }} has {{ $value }} bad or pending sectors"
+          description: Plan a replacement.
+
+      - alert: SsdWearingOut
+        expr: smartmon_percent_lifetime_remain_value < 20 or (1 - nvme_percentage_used_ratio) * 100 < 20
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "SSD {{ $labels.disk }}{{ $labels.device }} on {{ $labels.instance }} has {{ $value | printf \"%.0f\" }}% life left"
+          description: Plan a replacement.
+
+      - alert: FilesystemAlmostFull
+        expr: >-
+          node_filesystem_avail_bytes{fstype=~"ext4|xfs|zfs"}
+          / node_filesystem_size_bytes{fstype=~"ext4|xfs|zfs"} < 0.15
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.mountpoint }} on {{ $labels.instance }} has {{ $value | humanizePercentage }} free"
+          description: Under 15% free.
+
+      - alert: FilesystemFillingUp
+        expr: >-
+          predict_linear(node_filesystem_avail_bytes{fstype=~"ext4|xfs|zfs"}[6h], 7 * 86400) < 0
+          and node_filesystem_avail_bytes{fstype=~"ext4|xfs|zfs"}
+            / node_filesystem_size_bytes{fstype=~"ext4|xfs|zfs"} < 0.4
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.mountpoint }} on {{ $labels.instance }} will fill within 7 days"
+          description: At the last 6 hours' rate it runs out of space within a week.
+
+  - name: hardware
+    rules:
+      - alert: FanStopped
+        expr: node_ipmi_speed_rpm < 200
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.sensor }} on {{ $labels.instance }} is at {{ $value }} RPM"
+          description: The fan has stopped or been unplugged.
+
+      - alert: BmcAlarm
+        expr: node_ipmi_status > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "BMC sensor {{ $labels.sensor }} on {{ $labels.instance }} is asserted"
+          description: PROCHOT, THERMTRIP, chassis intrusion or a PSU fault. Check the BMC event log.
+
+      - alert: CpuHot
+        expr: >-
+          (node_hwmon_temp_celsius and on (instance, chip, sensor) node_hwmon_sensor_label{label="Tctl"})
+          > 80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU on {{ $labels.instance }} is at {{ $value | printf \"%.0f\" }}°C"
+          description: Tctl above 80°C for 10 minutes. Check fans and airflow.
+
+      - alert: ChipsetHot
+        expr: node_ipmi_temperature_celsius{sensor="X570 Temp"} > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "X570 chipset on {{ $labels.instance }} is at {{ $value }}°C"
+          description: Above 85°C for 10 minutes (BMC critical is 94°C). Check the chipset fan.
+
+      - alert: SataDiskHot
+        expr: smartmon_temperature_celsius_raw_value > 50
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.disk }} on {{ $labels.instance }} is at {{ $value }}°C"
+          description: SATA disk above 50°C for 10 minutes.
+
+      - alert: NvmeHot
+        expr: nvme_temperature_celsius > 65
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "NVMe {{ $labels.device }} on {{ $labels.instance }} is at {{ $value }}°C"
+          description: NVMe above 65°C for 10 minutes.
+
+  - name: resources
+    rules:
+      - alert: MemoryLow
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.10
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} has {{ $value | humanizePercentage }} memory available"
+          description: Under 10% available for 15 minutes.
+
+  - name: updates
+    rules:
+      # VMs install updates on their own, so on a VM this means automatic
+      # updates have stalled; pr3 is updated by hand.
+      - alert: UpdatesPending
+        expr: sum by (instance) (apt_upgrades_pending) > 0
+        for: 7d
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} has had {{ $value }} updates waiting for a week"
+          description: Run 'apt update && apt full-upgrade' (pr3) or check unattended-upgrades (VMs).
+
+      - alert: RebootRequired
+        expr: node_reboot_required == 1
+        for: 3d
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.instance }} has needed a reboot for 3 days"
+          description: An installed update (usually a kernel) only takes effect after a reboot.

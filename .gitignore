@@ -7,3 +7,6 @@
 venv/
 
 roles/k8s/files/ca.crt
+
+# PVE API token secrets
+pve/secrets/

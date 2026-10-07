@@ -1,0 +1,30 @@
+---
+postgres_version: 18
+
+# Networks allowed to connect with a password (scram-sha-256).
+postgres_allowed_networks:
+  - 10.20.0.0/24 # lab
+  - 192.168.1.0/24 # home LAN
+
+# Sized for the VM's 8 GB RAM and SSD-backed storage.
+postgres_settings:
+  listen_addresses: "'*'"
+  password_encryption: "'scram-sha-256'"
+  max_connections: 100
+  shared_buffers: 2GB
+  effective_cache_size: 6GB
+  maintenance_work_mem: 512MB
+  work_mem: 16MB
+  random_page_cost: 1.1
+  effective_io_concurrency: 200
+
+# Roles and databases. Passwords live in vault.yml (ansible-vault encrypted):
+#
+#   postgres_roles:
+#     - name: myapp
+#       password: "{{ vault_postgres_myapp_password }}"
+#   postgres_databases:
+#     - name: myapp
+#       owner: myapp
+postgres_roles: []
+postgres_databases: []

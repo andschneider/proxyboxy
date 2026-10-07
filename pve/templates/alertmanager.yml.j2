@@ -1,0 +1,51 @@
+# Managed by Ansible (pve/monitoring.yml).
+route:
+  receiver: ntfy-warning
+  group_by: [alertname, instance]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 24h
+  routes:
+    # Watchdog always fires; pinging it to an outside service every minute
+    # means silence there = alerting itself is down.
+    - matchers: [alertname="Watchdog"]
+      receiver: {{ 'deadman' if deadman_url else 'blackhole' }}
+      group_wait: 0s
+      group_interval: 1m
+      repeat_interval: 1m
+    - matchers: [severity="critical"]
+      receiver: ntfy-critical
+      repeat_interval: 4h
+
+# A host that's down would otherwise also fire every alert about it. Only
+# node_exporter being down counts as the host being down: other exporters
+# (pve, postgres) share an instance label with it, and their outage mustn't
+# hide alerts node_exporter still reports.
+inhibit_rules:
+  - source_matchers: [alertname="TargetDown", job="node"]
+    target_matchers: [alertname!="TargetDown"]
+    equal: [instance]
+
+# ntfy formats Alertmanager's webhook itself (?template=alertmanager); the
+# priority parameter sets how loudly the phone notifies.
+receivers:
+{% for name, priority in [('ntfy-critical', 'urgent'), ('ntfy-warning', 'default')] %}
+  - name: {{ name }}
+    webhook_configs:
+      - url: "{{ ntfy_url }}/{{ ntfy_topic }}?template=alertmanager&priority={{ priority }}&tags={{ 'rotating_light' if priority == 'urgent' else 'warning' }}"
+        send_resolved: true
+{% if ntfy_token %}
+        http_config:
+          authorization:
+            type: Bearer
+            credentials: "{{ ntfy_token }}"
+{% endif %}
+{% endfor %}
+{% if deadman_url %}
+  - name: deadman
+    webhook_configs:
+      - url: "{{ deadman_url }}"
+        send_resolved: false
+{% else %}
+  - name: blackhole
+{% endif %}

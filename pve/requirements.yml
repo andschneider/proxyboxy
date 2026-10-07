@@ -1,0 +1,8 @@
+---
+# Install with: ansible-galaxy collection install -r pve/requirements.yml
+# (The full `ansible` package already bundles these.)
+collections:
+  - name: community.postgresql
+    version: ">=4.0.0"
+  - name: ansible.posix
+    version: ">=2.0.0"

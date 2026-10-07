@@ -1,0 +1,17 @@
+---
+# Short self-test daily at 02:00, long self-test Saturdays at 03:00, warn on
+# temperature changes of 4C or crossing 45C/55C. Mail goes to root, which PVE
+# forwards to the address set at install.
+- name: Configure smartd
+  ansible.builtin.copy:
+    dest: /etc/smartd.conf
+    content: |
+      DEVICESCAN -a -o on -S on -n standby,q -s (S/../.././02|L/../../6/03) -W 4,45,55 -m root -M exec /usr/share/smartmontools/smartd-runner
+    mode: "0644"
+  notify: Restart smartd
+
+- name: Enable smartd
+  ansible.builtin.systemd_service:
+    name: smartmontools
+    enabled: true
+    state: started
