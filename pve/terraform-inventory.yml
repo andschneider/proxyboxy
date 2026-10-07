@@ -1,0 +1,6 @@
+---
+# VMs managed by Terraform (ansible_host resources in pve/terraform). Needs the
+# cloud.terraform collection and an initialized pve/terraform. project_path is
+# relative to the working directory, so run from the repo root (make does).
+plugin: cloud.terraform.terraform_provider
+project_path: pve/terraform

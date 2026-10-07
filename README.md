@@ -83,8 +83,11 @@ ansible-playbook -i inventory postgres.yml -Kb -v
 
 - [ ] ensure options are set correctly (localization, ect.)
 
-### linting
+### Tooling
 
-Linting is done using `ansible-lint`, which can be pip installed.
+Ansible and `ansible-lint` are pinned in `pyproject.toml` / `uv.lock` and run through
+[uv](https://docs.astral.sh/uv/): the Makefile calls `uv run`, which creates `.venv` on first use.
+Run anything else the same way, e.g. `uv run ansible-inventory ...`.
 
-- [ ] Add Github action to run linting
+`make lint` runs `ansible-lint` on `pve/` (config in `.ansible-lint`). GitHub Actions runs it and
+`terraform fmt -check` on every push and pull request.

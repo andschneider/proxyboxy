@@ -1,0 +1,15 @@
+# Python tooling for the playbooks. `uv run` (used by the Makefile) creates
+# .venv from uv.lock on first use.
+[project]
+name = "proxyboxy"
+version = "0.0.0"
+requires-python = ">=3.12"
+dependencies = [
+  # ansible 14 brings ansible-core 2.21, which removed get_bin_path(required=)
+  # and breaks the cloud.terraform inventory plugin (terraform-inventory.yml).
+  "ansible>=13.8.0,<14.0.0",
+  "ansible-lint>=26.9.0",
+]
+
+[tool.uv]
+package = false

@@ -109,11 +109,3 @@
         state: started
         enabled: true
         daemon_reload: true
-
-    # After the job, so a disk problem can't stop the job being created.
-    - name: Reconcile per-disk backup flags
-      ansible.builtin.include_tasks: tasks/backup-disks.yml
-      loop: "{{ pve_vms | selectattr('data_disks', 'defined') | list }}"
-      loop_control:
-        loop_var: vm
-        label: "{{ vm.name }}"

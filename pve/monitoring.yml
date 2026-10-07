@@ -1,9 +1,9 @@
 ---
 # Metrics: exporters on pr3 and the lab VMs, Prometheus and Grafana on monitor.
-# Create the monitor VM first with `make pve-vms`.
+# Create the monitor VM first with Terraform (pve/terraform).
 #
 #   make monitoring
-- name: pr3 exporters
+- name: Exporters on pr3
   hosts: pve
   # Run queued restarts even if a later task fails, so a re-run doesn't
   # find the config already in place and skip the restart.
@@ -195,7 +195,8 @@
 
     # Masking a running timer or removing a failed service leaves a failed
     # unit behind, which marks the whole system degraded.
-    - name: Check for failed units
+    # No module lists failed units.
+    - name: Check for failed units # noqa: command-instead-of-module
       ansible.builtin.command: systemctl list-units --failed --plain --no-legend --output json
       register: vm_failed_units
       changed_when: false
@@ -226,12 +227,14 @@
       community.postgresql.postgresql_user:
         name: prometheus
         role_attr_flags: LOGIN
+      become: true
       become_user: postgres
 
     - name: Grant pg_monitor
       community.postgresql.postgresql_membership:
         groups: pg_monitor
         target_roles: prometheus
+      become: true
       become_user: postgres
 
     - name: Install postgres_exporter

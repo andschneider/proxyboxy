@@ -55,14 +55,37 @@ services (monitor, files), `.110` and up are apps and databases.
 
 ```bash
 make pve-template   # download the cloud image and build template 9000
-make pve-vms        # create any VMs in pve_vms (host_vars/pr3.yml) that don't exist yet
 ```
 
-| VM       | VMID | IP            | Storage |
-|----------|------|---------------|---------|
-| monitor  | 100  | `10.20.0.100` | `fast`  |
-| files    | 101  | `10.20.0.101` | `fast`  |
-| postgres | 110  | `10.20.0.110` | `fast`  |
+| VM       | VMID | IP            | Storage                 |
+|----------|------|---------------|-------------------------|
+| monitor  | 100  | `10.20.0.100` | `fast`                  |
+| files    | 101  | `10.20.0.101` | `fast`, share on `tank` |
+| postgres | 110  | `10.20.0.110` | `fast`                  |
+
+### Terraform
+
+Terraform in `terraform/` creates the VMs (one `.tf` file each) and can change them later (CPU,
+memory, disk size). Every VM has `prevent_destroy`, so Terraform refuses any plan that would delete
+one. VMs reach Ansible through `terraform-inventory.yml`, which reads `ansible_host` resources from
+the Terraform state, so their IPs live only in the `.tf` files.
+
+- Uses the `ansible@pve!automation` token saved in `secrets/` by the post-install playbook.
+- State is local (`terraform/terraform.tfstate`, gitignored). Back it up: losing it means
+  re-importing every VM.
+- Needs the `cloud.terraform` collection:
+  `uv run ansible-galaxy collection install -r pve/requirements.yml`.
+
+```bash
+terraform -chdir=pve/terraform init
+terraform -chdir=pve/terraform plan
+terraform -chdir=pve/terraform apply
+```
+
+To add a VM, copy one of the `.tf` files, change the name, VMID, IP and sizes, apply, and remove
+the old host key with `ssh-keygen -R <ip>` if the IP was used before. To bring in a VM made outside
+Terraform without recreating it, use an `import` block instead of `clone` (a clone block on an
+imported VM forces a replacement) and plan until there are no changes before applying.
 
 ### postgres
 
@@ -72,8 +95,7 @@ PostgreSQL from the PGDG repo, reachable from `lab` and the home LAN with passwo
 - Role passwords go in an ansible-vault encrypted `host_vars/postgres/vault.yml`.
 - unattended-upgrades also installs PGDG updates, so 18.x minor releases arrive on their own; a new
   major version stays manual.
-- Needs the `community.postgresql` collection (bundled with the full `ansible` package; otherwise
-  `ansible-galaxy collection install -r pve/requirements.yml`).
+- Uses the `community.postgresql` collection, bundled with the `ansible` package in `uv.lock`.
 
 ```bash
 make postgres
@@ -103,8 +125,7 @@ hardware** shows fans, CPU, board and disk temperatures, SSD wear, disk errors a
 To change one, edit a copy in Grafana, export it as JSON and replace the file.
 
 ```bash
-make pve-vms      # create the monitor VM
-make monitoring
+make monitoring   # after creating the VM with Terraform
 ```
 
 #### Alerts
@@ -140,8 +161,7 @@ clashes.
 
 ```bash
 ansible-vault edit pve/host_vars/files/vault.yml     # vault_share_smb_password: ...
-make pve-vms   # create the files VM
-make files
+make files   # after creating the VM with Terraform
 ```
 
 ## Backups
@@ -151,8 +171,8 @@ IronWolf, keeping 7 daily, 4 weekly and 6 monthly copies. Snapshot mode with the
 each VM's filesystems for a consistent copy without downtime. Schedule and exclusions are in
 `pve_backup_job` in `host_vars/pr3.yml`.
 
-Data disks marked `backup: false` in `pve_vms` are skipped. Right now that's the files share, which
-isn't backed up at all.
+Data disks with `backup = false` in their Terraform `disk` block are skipped. Right now that's the
+files share, which isn't backed up at all.
 
 ```bash
 make pve-backup

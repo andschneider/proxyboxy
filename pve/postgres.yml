@@ -110,6 +110,7 @@
       loop: "{{ postgres_roles }}"
       loop_control:
         label: "{{ item.name }}"
+      become: true
       become_user: postgres
       no_log: true
 
@@ -120,4 +121,5 @@
       loop: "{{ postgres_databases }}"
       loop_control:
         label: "{{ item.name }}"
+      become: true
       become_user: postgres

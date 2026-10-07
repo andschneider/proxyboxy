@@ -1,8 +1,11 @@
 ---
-# Install with: ansible-galaxy collection install -r pve/requirements.yml
-# (The full `ansible` package already bundles these.)
+# Install with: uv run ansible-galaxy collection install -r pve/requirements.yml
+# (The `ansible` package in uv.lock already bundles all but cloud.terraform.)
 collections:
   - name: community.postgresql
     version: ">=4.0.0"
   - name: ansible.posix
     version: ">=2.0.0"
+  # Not bundled with the ansible package; needed for terraform-inventory.yml.
+  - name: cloud.terraform
+    version: ">=4.0.0"
