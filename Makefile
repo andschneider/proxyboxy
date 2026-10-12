@@ -47,7 +47,7 @@ pve-template: pve/inventory.yml pve/template.yml
 # Terraform-managed VMs come from the second inventory (pve/terraform). Fail if
 # it can't be read, rather than quietly running without those hosts.
 LAB_INVENTORY = -i pve/inventory.yml -i pve/terraform-inventory.yml
-postgres monitoring files: export ANSIBLE_INVENTORY_UNPARSED_FAILED = True
+postgres monitoring files brewstack: export ANSIBLE_INVENTORY_UNPARSED_FAILED = True
 
 # Prompts for the vault password only once a host has a vault.yml.
 .PHONY: postgres
@@ -64,6 +64,10 @@ monitoring: pve/inventory.yml pve/monitoring.yml
 .PHONY: files
 files: pve/inventory.yml pve/files.yml
 	uv run ansible-playbook $(LAB_INVENTORY) pve/files.yml --ask-vault-pass -v
+
+.PHONY: brewstack
+brewstack: pve/inventory.yml pve/brewstack.yml
+	uv run ansible-playbook $(LAB_INVENTORY) pve/brewstack.yml -v
 
 .PHONY: pve-backup
 pve-backup: pve/inventory.yml pve/backup.yml

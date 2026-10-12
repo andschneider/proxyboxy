@@ -51,17 +51,19 @@ ansible-playbook -i pve/inventory.yml pve/post-install.yml --ask-pass --tags zfs
 
 VMs are Ubuntu 26.04 clones of a cloud-init template, on the `lab` VLAN with static IPs. Log in as
 `ubuntu` with `~/.ssh/homelab_ed25519`. VMID matches the last IP octet: `.100`–`.109` are core
-services (monitor, files), `.110` and up are apps and databases.
+services (monitor, files), `.110`–`.199` are infrastructure apps and databases, and `.200` and up
+are user apps (brewstack).
 
 ```bash
 make pve-template   # download the cloud image and build template 9000
 ```
 
-| VM       | VMID | IP            | Storage                 |
-|----------|------|---------------|-------------------------|
-| monitor  | 100  | `10.20.0.100` | `fast`                  |
-| files    | 101  | `10.20.0.101` | `fast`, share on `tank` |
-| postgres | 110  | `10.20.0.110` | `fast`                  |
+| VM        | VMID | IP            | Storage                 |
+|-----------|------|---------------|-------------------------|
+| monitor   | 100  | `10.20.0.100` | `fast`                  |
+| files     | 101  | `10.20.0.101` | `fast`, share on `tank` |
+| postgres  | 110  | `10.20.0.110` | `fast`                  |
+| brewstack | 200  | `10.20.0.200` | `fast`                  |
 
 ### Terraform
 
@@ -163,6 +165,24 @@ clashes.
 ansible-vault edit pve/host_vars/files/vault.yml     # vault_share_smb_password: ...
 make files   # after creating the VM with Terraform
 ```
+
+### brewstack
+
+The brewstack coffee scale app (`~/Github/brewstack`), moved here from a Raspberry Pi. nginx on
+`:80` serves the frontend from `/opt/shotviewer/dist` and proxies `/api` (`:3000`) and `/ws`
+(`:9090`) to the backend. The backend is the `shotrecorder` service, running
+`/opt/shotrecorder/shotrecorder` as `ubuntu` with its SQLite database in `/var/lib/brewstack`. The
+ESP32 connects straight to the backend on TCP `:8884`.
+
+The playbook only prepares the host. The binary, frontend and database are deployed from the
+brewstack repo with its Makefile, as `ubuntu` with `~/.ssh/homelab_ed25519`. The service is enabled
+but not started until the first deploy, so it doesn't create an empty database first.
+
+```bash
+make brewstack   # after creating the VM with Terraform
+```
+
+The database is on the VM's disk, so the nightly vzdump backs it up with the VM.
 
 ## Backups
 
