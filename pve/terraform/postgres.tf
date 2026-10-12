@@ -28,8 +28,11 @@ resource "proxmox_virtual_environment_vm" "postgres" {
     type  = "host"
   }
 
+  # floating = dedicated adds the balloon device, so Proxmox reports the
+  # guest's own memory use, but never shrinks the VM.
   memory {
     dedicated = 8192
+    floating  = 8192
   }
 
   operating_system {

@@ -1,0 +1,14 @@
+---
+# Layout matches the brewstack repo's Makefile (REMOTE_DIR, REMOTE_DIR_FRONTEND,
+# REMOTE_DIR_DATABASE), which deploys as the ubuntu user over SSH.
+brewstack_user: ubuntu
+brewstack_binary_dir: /opt/shotrecorder
+brewstack_binary: "{{ brewstack_binary_dir }}/shotrecorder"
+brewstack_frontend_dir: /opt/shotviewer
+# The backend opens data.db relative to its working directory.
+brewstack_data_dir: /var/lib/brewstack
+
+# Fixed in backend/src/config.rs. The TCP device port (8884) is reached
+# directly, not through nginx.
+brewstack_api_port: 3000
+brewstack_ws_port: 9090
