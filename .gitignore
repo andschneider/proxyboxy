@@ -7,10 +7,8 @@
 venv/
 .venv/
 
-roles/k8s/files/ca.crt
-
 # PVE API token secrets
-pve/secrets/
+secrets/
 
 # Terraform (commit .terraform.lock.hcl)
 .terraform/

@@ -1,0 +1,126 @@
+---
+# Brewstack on the brewstack VM: nginx serves the frontend and proxies /api and
+# /ws to the backend, which runs as a systemd service. Create the VM first with
+# Terraform (terraform).
+#
+#   make brewstack
+#
+# The binary, frontend and database are deployed from the brewstack repo
+# (make deploy-all, make scp-database); this only prepares the host and never
+# touches them.
+- name: Brewstack
+  hosts: brewstack
+  become: true
+  # Run queued restarts even if a later task fails, so a re-run doesn't
+  # find the config already in place and skip the restart.
+  force_handlers: true
+
+  handlers:
+    - name: Reload nginx
+      ansible.builtin.systemd_service:
+        name: nginx
+        state: reloaded
+
+    - name: Restart shotrecorder
+      ansible.builtin.systemd_service:
+        name: shotrecorder
+        state: restarted
+        daemon_reload: true
+      # Nothing to restart until the first deploy.
+      when: brewstack_binary_stat.stat.exists
+
+  tasks:
+    - name: Install nginx and sqlite3
+      ansible.builtin.apt:
+        name:
+          - nginx
+          - sqlite3
+        update_cache: true
+
+    - name: Create app directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ brewstack_user }}"
+        group: "{{ brewstack_user }}"
+        mode: "0755"
+      loop:
+        - "{{ brewstack_binary_dir }}"
+        - "{{ brewstack_frontend_dir }}"
+        - "{{ brewstack_data_dir }}"
+        # Where the repo's scp-database moves the old copy.
+        - "{{ brewstack_data_dir }}/backups"
+
+    - name: Check for a deployed binary
+      ansible.builtin.stat:
+        path: "{{ brewstack_binary }}"
+      register: brewstack_binary_stat
+
+    - name: Install shotrecorder service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/shotrecorder.service
+        content: |
+          # Managed by Ansible (brewstack.yml).
+          [Unit]
+          Description=Brewstack backend (shot recorder)
+          Wants=network-online.target
+          After=network-online.target
+
+          [Service]
+          User={{ brewstack_user }}
+          Group={{ brewstack_user }}
+          WorkingDirectory={{ brewstack_data_dir }}
+          ExecStart={{ brewstack_binary }}
+          Restart=on-failure
+          RestartSec=5s
+          Environment=RUST_LOG=info
+          LimitNOFILE=1048576
+
+          NoNewPrivileges=true
+          PrivateTmp=true
+          ProtectSystem=strict
+          ProtectHome=true
+          ReadWritePaths={{ brewstack_data_dir }}
+
+          [Install]
+          WantedBy=multi-user.target
+        mode: "0644"
+      notify: Restart shotrecorder
+
+    # Enabled but not started: it would create an empty data.db before the
+    # real one is copied over. The first deploy starts it.
+    - name: Enable shotrecorder
+      ansible.builtin.systemd_service:
+        name: shotrecorder
+        enabled: true
+        daemon_reload: true
+
+    - name: Remove default nginx site
+      ansible.builtin.file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: Reload nginx
+
+    - name: Configure brewstack site
+      ansible.builtin.template:
+        src: templates/brewstack-nginx.conf.j2
+        dest: /etc/nginx/sites-available/brewstack
+        mode: "0644"
+      notify: Reload nginx
+
+    - name: Enable brewstack site
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/brewstack
+        dest: /etc/nginx/sites-enabled/brewstack
+        state: link
+      notify: Reload nginx
+
+    - name: Check nginx config
+      ansible.builtin.command: nginx -t
+      changed_when: false
+
+    - name: Start nginx
+      ansible.builtin.systemd_service:
+        name: nginx
+        state: started
+        enabled: true

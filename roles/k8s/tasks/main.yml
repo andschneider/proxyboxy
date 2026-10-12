@@ -1,5 +1,0 @@
----
-- include: swap.yml
-- include: docker.yml
-- include: kubernetes.yml
-- include: netplan.yml

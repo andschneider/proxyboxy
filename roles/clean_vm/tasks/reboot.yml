@@ -1,8 +1,0 @@
----
-- name: Reboot VM and don't attempt to reconnect.
-  become: yes
-  when: reboot
-  reboot:
-    reboot_timeout: 1
-  ignore_unreachable: yes
-  ignore_errors: yes

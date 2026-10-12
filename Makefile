@@ -2,73 +2,47 @@
 # up .venv on first use.
 .PHONY: lint
 lint:
-	uv run ansible-lint pve/
-
-clean-vm: inventory clean.yml
-	uv run ansible-playbook -i inventory clean.yml -Kb -v
-
-###############################
-###         Harbor          ###
-###############################
-.PHONY: get-harbor-certs install-harbor harbor
-HARBOR_HOST=192.168.17.170
-
-get-harbor-certs:
-	scp ${HARBOR_HOST}:/harbor/certs/ca.crt ./roles/k8s/files/ca.crt
-
-install-harbor: inventory harbor.yml
-	uv run ansible-playbook -i inventory harbor.yml -Kb -v
-
-harbor: install-harbor  get-harbor-certs
-	@sudo cp ./roles/k8s/files/ca.crt /usr/local/share/ca-certificates/ca.crt
-	@sudo update-ca-certificates
-	@sudo systemctl restart docker.service
-
-###############################
-###           K8S           ###
-###############################
-k8s: inventory k8s.yml
-	uv run ansible-playbook -i inventory k8s.yml -Kb -v
+	uv run ansible-lint .
 
 ###############################
 ###           PVE           ###
 ###############################
 .PHONY: pve-post
-pve-post: pve/inventory.yml pve/post-install.yml
-	uv run ansible-playbook -i pve/inventory.yml pve/post-install.yml --ask-pass -v
+pve-post: inventory.yml post-install.yml
+	uv run ansible-playbook -i inventory.yml post-install.yml --ask-pass -v
 
 .PHONY: pve-template
-pve-template: pve/inventory.yml pve/template.yml
-	uv run ansible-playbook -i pve/inventory.yml pve/template.yml --ask-pass -v
+pve-template: inventory.yml template.yml
+	uv run ansible-playbook -i inventory.yml template.yml --ask-pass -v
 
 ###############################
 ###           Lab           ###
 ###############################
-# Terraform-managed VMs come from the second inventory (pve/terraform). Fail if
+# Terraform-managed VMs come from the second inventory (terraform). Fail if
 # it can't be read, rather than quietly running without those hosts.
-LAB_INVENTORY = -i pve/inventory.yml -i pve/terraform-inventory.yml
+LAB_INVENTORY = -i inventory.yml -i terraform-inventory.yml
 postgres monitoring files brewstack: export ANSIBLE_INVENTORY_UNPARSED_FAILED = True
 
 # Prompts for the vault password only once a host has a vault.yml.
 .PHONY: postgres
-postgres: pve/inventory.yml pve/postgres.yml
-	uv run ansible-playbook $(LAB_INVENTORY) pve/postgres.yml -v \
-		$(if $(wildcard pve/host_vars/postgres/vault.yml),--ask-vault-pass)
+postgres: inventory.yml postgres.yml
+	uv run ansible-playbook $(LAB_INVENTORY) postgres.yml -v \
+		$(if $(wildcard host_vars/postgres/vault.yml),--ask-vault-pass)
 
 # --ask-pass is for root on pr3; lab VMs use the SSH key.
 .PHONY: monitoring
-monitoring: pve/inventory.yml pve/monitoring.yml
-	uv run ansible-playbook $(LAB_INVENTORY) pve/monitoring.yml --ask-pass -v \
-		$(if $(wildcard pve/host_vars/*/vault.yml),--ask-vault-pass)
+monitoring: inventory.yml monitoring.yml
+	uv run ansible-playbook $(LAB_INVENTORY) monitoring.yml --ask-pass -v \
+		$(if $(wildcard host_vars/*/vault.yml),--ask-vault-pass)
 
 .PHONY: files
-files: pve/inventory.yml pve/files.yml
-	uv run ansible-playbook $(LAB_INVENTORY) pve/files.yml --ask-vault-pass -v
+files: inventory.yml files.yml
+	uv run ansible-playbook $(LAB_INVENTORY) files.yml --ask-vault-pass -v
 
 .PHONY: brewstack
-brewstack: pve/inventory.yml pve/brewstack.yml
-	uv run ansible-playbook $(LAB_INVENTORY) pve/brewstack.yml -v
+brewstack: inventory.yml brewstack.yml
+	uv run ansible-playbook $(LAB_INVENTORY) brewstack.yml -v
 
 .PHONY: pve-backup
-pve-backup: pve/inventory.yml pve/backup.yml
-	uv run ansible-playbook -i pve/inventory.yml pve/backup.yml --ask-pass -v
+pve-backup: inventory.yml backup.yml
+	uv run ansible-playbook -i inventory.yml backup.yml --ask-pass -v
