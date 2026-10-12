@@ -1,0 +1,4 @@
+---
+# Both inventories live at the repo root. Anchor shared paths here so callers
+# can place playbooks at any depth without changing where resources are found.
+repo_root: "{{ inventory_dir }}"

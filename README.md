@@ -1,93 +1,222 @@
 # proxyboxy
 
-proxmox
+Automation for the current Proxmox homelab: Terraform manages VMs and Ansible
+configures the host and services. Run commands from the repository root.
 
-## clean 
+Playbooks live in `playbooks/`; inventories and collection requirements stay at
+the root. Shared tasks, templates, files, and host variables have their own
+directories. The Makefile runs each playbook with the appropriate inventory.
+`group_vars/all.yml` defines `repo_root` from the inventory directory, anchoring
+shared resource paths independently of the playbook location.
 
-Used to reset a fresh VM clone.
-
-```bash
-make clean-vm
-```
-
-## harbor
-
-Install Harbor container registry on a VM with `make harbor`.
-
-To download the cert to the local machine, use `make get-harbor-certs`. See the Makefile for how to update Docker to use it.
-
-### TODO
-
-- [X] use https
-- [X] check that rebooting server doesn't kill harbor (it does)
-- [X] create a system service for harbor docker-compose file
-- [X] copy back ca.crt to client
-- [X] convert files to templates and use host as variable (create-certs.sh, harbor-template.yml)
-- [ ] convert shell script to task
-- [X] add scanning capabilities
-- [ ] setup replication to GCR
-- [ ] use the cert with k8s nodes
-
-## proxmox vm clone
-
-Clone a template and create a new VM.
-
-### TODO 
-
-- [ ] clean up inventory and variables
-- [ ] make sure templates have guest agent installed (cleanup templates)
-- [ ] fix DNS issue
-- [ ] setup vault for password
-- [ ] clean up ssh password usage (set default private key or something)
-- [ ] create a stop and remove playbook
-
-```bash
-ansible-playbook -i clone-inventory create-vm.yml -Kbv --ask-pass
-```
-
-## k8s
-
-The k8s playbook can be used to setup both worker nodes and master nodes. For both, the playbook installs and configures all the necessary dependencies and networking requirements. This is done in the `k8s` role, with tasks such as:
-
-- static IP on ens18 for all
-- DHCP on ens19 for workers
-- installs kubeadm, kubectl 
-- installs the Harbor cert
-- disables swap
-
-For master nodes, additional configuration is done using the `k8s_master` role:
-
-- static IP on ens19
-- DHCP server configuration
-- cluster creation with kubeadm
-
-To run both roles:
-
-```bash
-make k8s
-```
-
-### TODO
-
-- [ ] configure Flannel for master node
-- [ ] configure Metallb for master node
-- [ ] don't apply the DHCP on ens19 to the master node in the `k8s` role
-
-## postgres
-
-```bash
-ansible-playbook -i inventory postgres.yml -Kb -v
-```
-
-### TODO
-
-- [ ] ensure options are set correctly (localization, ect.)
-
-### Tooling
+## Tooling
 
 Ansible and `ansible-lint` are pinned in `pyproject.toml` / `uv.lock` and run through
-[uv](https://docs.astral.sh/uv/): the Makefile calls `uv run`, which creates `.venv` on first use.
-Run anything else the same way, e.g. `uv run ansible-inventory ...`.
+[uv](https://docs.astral.sh/uv/). `uv run` creates `.venv` on first use.
+Install the additional Ansible collections with:
 
-`make lint` runs `ansible-lint` on `pve/` (config in `.ansible-lint`). GitHub Actions runs it and
-`terraform fmt -check` on every push and pull request.
+```bash
+uv run ansible-galaxy collection install -r requirements.yml
+```
+
+`make lint` runs `ansible-lint`. GitHub Actions also checks Terraform formatting.
+
+## Proxmox host
+
+Fresh Proxmox VE 9 install on `pr3.lab.andschneider.net` (10.10.0.7, `lab-mgmt` VLAN 10).
+
+## Network
+
+VLANs live on the UDM Pro. The switch can't tag, so each network gets its own untagged port: `vmbr0`
+(`nic0`) is on `lab-mgmt` and carries pr3's address; `vmbr1` (`nic2`, 10G) is on `lab` with no host
+address, and VMs attach to it untagged.
+
+| VLAN           | Subnet         | Hosts                                        |
+|----------------|----------------|----------------------------------------------|
+| 10, `lab-mgmt` | `10.10.0.0/24` | pr3 `10.10.0.7`, BMC `10.10.0.8`; no DHCP    |
+| 20, `lab`      | `10.20.0.0/24` | VMs; DHCP `.10`–`.99`, statics `.100`–`.254` |
+
+## Disk layout
+
+| Disk                  | by-id                                | Use                                      |
+|-----------------------|--------------------------------------|------------------------------------------|
+| Samsung 970 EVO 500GB | `nvme-Samsung_SSD_970_EVO_500GB_...` | Boot/OS (ext4, installer)                |
+| 2x WD SN750 1TB       | `nvme-WDS100T3X0C-00SJG0_*`          | `fast` ZFS mirror (VMs)                  |
+| 2x Crucial MX500 2TB  | `ata-CT2000MX500SSD1_*`              | `tank` ZFS mirror (VMs)                  |
+| Seagate IronWolf 4TB  | `ata-ST4000VN008-2DR166_ZGY73D0C`    | `backup` ZFS pool (vzdump)               |
+| Crucial MX500 1TB     | `ata-CT1000MX500SSD1_2052E4E1E9BB`   | `scratch` ZFS pool (throwaway VMs, ISOs) |
+
+## Post-install playbook
+
+```bash
+make pve-post
+```
+
+What it does:
+
+- Swaps enterprise repos for `pve-no-subscription` and runs a full upgrade
+- Caps journald at 200M and disables HA services (single node) to cut boot SSD writes
+- Caps ZFS ARC at 16 GiB
+- Creates the `fast`, `tank`, `backup` and `scratch` pools
+- Adds PVE storage: `fast`, `tank`, `scratch` (VM disks), `backup` (vzdump, with pruning) and `iso`
+  (ISOs/templates on `scratch/iso`)
+- Restricts `local` to ISOs, templates and snippets
+- Configures smartd self-tests and email alerts
+- Creates `ansible@pve` with an API token, saved to `secrets/` (gitignored)
+
+Run only some parts with tags:
+
+```bash
+ansible-playbook -i inventory.yml playbooks/post-install.yml --ask-pass --tags zfs,storage
+```
+
+## VMs
+
+VMs are Ubuntu 26.04 clones of a cloud-init template, on the `lab` VLAN with static IPs. Log in as
+`ubuntu` with `~/.ssh/homelab_ed25519`. VMID matches the last IP octet: `.100`–`.109` are core
+services (monitor, files), `.110`–`.199` are infrastructure apps and databases, and `.200` and up
+are user apps (brewstack).
+
+```bash
+make pve-template   # download the cloud image and build template 9000
+```
+
+| VM        | VMID | IP            | Storage                 |
+|-----------|------|---------------|-------------------------|
+| monitor   | 100  | `10.20.0.100` | `fast`                  |
+| files     | 101  | `10.20.0.101` | `fast`, share on `tank` |
+| postgres  | 110  | `10.20.0.110` | `fast`                  |
+| brewstack | 200  | `10.20.0.200` | `fast`                  |
+
+### Terraform
+
+Terraform in `terraform/` creates the VMs (one `.tf` file each) and can change them later (CPU,
+memory, disk size). Every VM has `prevent_destroy`, so Terraform refuses any plan that would delete
+one. VMs reach Ansible through `terraform-inventory.yml`, which reads `ansible_host` resources from
+the Terraform state, so their IPs live only in the `.tf` files.
+
+- Uses the `ansible@pve!automation` token saved in `secrets/` by the post-install playbook.
+- State is local (`terraform/terraform.tfstate`, gitignored). Back it up: losing it means
+  re-importing every VM.
+- Needs the `cloud.terraform` collection:
+  `uv run ansible-galaxy collection install -r requirements.yml`.
+
+```bash
+terraform -chdir=terraform init
+terraform -chdir=terraform plan
+terraform -chdir=terraform apply
+```
+
+To add a VM, copy one of the `.tf` files, change the name, VMID, IP and sizes, apply, and remove
+the old host key with `ssh-keygen -R <ip>` if the IP was used before. To bring in a VM made outside
+Terraform without recreating it, use an `import` block instead of `clone` (a clone block on an
+imported VM forces a replacement) and plan until there are no changes before applying.
+
+### postgres
+
+PostgreSQL from the PGDG repo, reachable from `lab` and the home LAN with password auth.
+
+- Settings, allowed networks, roles and databases are in `host_vars/postgres/vars.yml`.
+- Role passwords go in an ansible-vault encrypted `host_vars/postgres/vault.yml`.
+- unattended-upgrades also installs PGDG updates, so 18.x minor releases arrive on their own; a new
+  major version stays manual.
+- Uses the `community.postgresql` collection, bundled with the `ansible` package in `uv.lock`.
+
+```bash
+make postgres
+```
+
+### monitor
+
+Prometheus (`:9090`, 90 day retention) and Grafana (`:3000`) on `monitor`, scraping:
+
+- `node_exporter` on pr3 and every lab VM (`:9100`). On pr3 the textfile collectors add SMART,
+  NVMe and IPMI sensor metrics (fans, temps, voltages).
+- `prometheus-pve-exporter` on pr3 (`:9221`), using a read-only `prometheus@pve` token whose secret
+  stays on pr3.
+- `postgres_exporter` on postgres (`:9187`), logging in with peer auth as `prometheus`.
+
+The UDM rule `server-prometheus-scrape` must allow `10.20.0.100` to reach `10.10.0.7` on 9100 and
+
+9221. Grafana starts with `admin`/`admin` and asks for a new password on first login.
+      unattended-upgrades also installs Grafana updates from its apt repo.
+
+Dashboards are provisioned into the Homelab folder and are read-only in the UI; use **Save as** to
+make an editable copy. Community ones (Node Exporter Full, Proxmox, PostgreSQL) come from
+grafana.com via `grafana_dashboards` in `host_vars/monitor/vars.yml`. Our own live in
+`files/grafana-dashboards/`: **Homelab overview** (Grafana's home page) has health tiles, firing
+alerts, the VMs, storage and Postgres on one screen, linking to the detailed dashboards; **pr3
+hardware** shows fans, CPU, board and disk temperatures, SSD wear, disk errors and ZFS pool state.
+To change one, edit a copy in Grafana, export it as JSON and replace the file.
+
+```bash
+make monitoring   # after creating the VM with Terraform
+```
+
+#### Alerts
+
+Prometheus evaluates the rules in `files/prometheus/alerts.yml` (targets and VMs down, ZFS, SMART,
+NVMe, fans, BMC alarms, temperatures, disk space and wear, stale backups, updates waiting a week,
+reboots needed for 3 days) and Alertmanager sends them to ntfy using ntfy's built-in Alertmanager
+template. Critical alerts arrive as urgent and repeat every 4h until fixed; warnings repeat daily.
+Alertmanager listens on localhost only; see firing alerts and add silences in Grafana under
+Alerting, with the Alertmanager data source.
+
+The ntfy topic (and a token, if the topic is protected) go in an ansible-vault encrypted
+`host_vars/monitor/vault.yml`:
+
+```bash
+ansible-vault create host_vars/monitor/vault.yml   # vault_ntfy_topic, vault_ntfy_token
+```
+
+Backup age comes from a `vzdump-metrics` timer on pr3 (`make pve-backup`), which reports the newest
+archive per VM to node_exporter.
+
+### files
+
+One folder, `/srv/share`, on a 200 GB data disk on `tank`, shared over NFSv4 and SMB. Every client
+acts as the `share` user (uid 2000), so files from Macs and Linux clients mix without permission
+clashes.
+
+- NFS (`files.lab.andschneider.net:/srv/share`) is open to the IPs in `share_nfs_clients` in
+  `host_vars/files/vars.yml`, `lab` by default. Add LAN devices there by IP.
+- SMB (`smb://files.lab.andschneider.net/share`) is open to `lab` and the home LAN, with user
+  `share` and the password from `host_vars/files/vault.yml`.
+- The data disk is only formatted when it's blank; the playbook never wipes it.
+
+```bash
+ansible-vault edit host_vars/files/vault.yml     # vault_share_smb_password: ...
+make files   # after creating the VM with Terraform
+```
+
+### brewstack
+
+The brewstack coffee scale app (`~/Github/brewstack`), moved here from a Raspberry Pi. nginx on
+`:80` serves the frontend from `/opt/shotviewer/dist` and proxies `/api` (`:3000`) and `/ws`
+(`:9090`) to the backend. The backend is the `shotrecorder` service, running
+`/opt/shotrecorder/shotrecorder` as `ubuntu` with its SQLite database in `/var/lib/brewstack`. The
+ESP32 connects straight to the backend on TCP `:8884`.
+
+The playbook only prepares the host. The binary, frontend and database are deployed from the
+brewstack repo with its Makefile, as `ubuntu` with `~/.ssh/homelab_ed25519`. The service is enabled
+but not started until the first deploy, so it doesn't create an empty database first.
+
+```bash
+make brewstack   # after creating the VM with Terraform
+```
+
+The database is on the VM's disk, so the nightly vzdump backs it up with the VM.
+
+## Backups
+
+A nightly vzdump job (02:30) backs up every VM except the template to the `backup` pool on the
+IronWolf, keeping 7 daily, 4 weekly and 6 monthly copies. Snapshot mode with the guest agent freezes
+each VM's filesystems for a consistent copy without downtime. Schedule and exclusions are in
+`pve_backup_job` in `host_vars/pr3.yml`.
+
+Data disks with `backup = false` in their Terraform `disk` block are skipped. Right now that's the
+files share, which isn't backed up at all.
+
+```bash
+make pve-backup
+```

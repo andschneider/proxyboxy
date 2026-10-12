@@ -1,6 +1,0 @@
----
-- hosts: updates
-  user: andrew
-
-  tasks:
-    - include_tasks: tasks/updates.yml

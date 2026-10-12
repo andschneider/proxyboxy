@@ -1,5 +1,0 @@
----
-- include: netplan.yml
-- include: dhcp.yml
-- include: kubeadm.yml
-#- include: flannel.yml

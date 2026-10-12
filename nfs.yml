@@ -1,6 +1,0 @@
----
-- hosts: nfs_k8s
-  user: andrew
-
-  tasks:
-    - include_tasks: tasks/nfs.yml

@@ -17,7 +17,7 @@ jobs:
         with:
           # Same version as local, so fmt output matches.
           terraform_version: 1.14.8
-      - run: terraform fmt -check -diff -recursive pve/terraform
+      - run: terraform fmt -check -diff -recursive terraform
 
   ansible-lint:
     runs-on: ubuntu-latest
@@ -26,4 +26,4 @@ jobs:
       - uses: astral-sh/setup-uv@v10.2.0
       # Same ansible and ansible-lint as local, from uv.lock. Config and
       # skipped rules are in .ansible-lint.
-      - run: uv run --locked ansible-lint pve/
+      - run: uv run --locked ansible-lint .
