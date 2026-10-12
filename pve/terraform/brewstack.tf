@@ -28,8 +28,11 @@ resource "proxmox_virtual_environment_vm" "brewstack" {
     type  = "host"
   }
 
+  # floating = dedicated adds the balloon device, so Proxmox reports the
+  # guest's own memory use, but never shrinks the VM.
   memory {
     dedicated = 2048
+    floating  = 2048
   }
 
   operating_system {
