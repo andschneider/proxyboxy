@@ -116,7 +116,7 @@
       ansible.builtin.copy:
         dest: /etc/nfs.conf.d/90-ansible.conf
         content: |
-          # Managed by Ansible (files.yml).
+          # Managed by Ansible (playbooks/files.yml).
           [nfsd]
           vers3=n
         mode: "0644"
@@ -136,7 +136,7 @@
       ansible.builtin.copy:
         dest: /etc/exports
         content: |
-          # Managed by Ansible (files.yml).
+          # Managed by Ansible (playbooks/files.yml).
           # Every client maps to {{ share_user }} ({{ share_uid }}).
           {{ share_path }} {{ share_nfs_clients | map('regex_replace', '$', '(' ~ share_nfs_opts ~ ')') | join(' ') }}
         mode: "0644"
@@ -150,7 +150,7 @@
 
     - name: Configure Samba
       ansible.builtin.template:
-        src: templates/smb.conf.j2
+        src: "{{ repo_root }}/templates/smb.conf.j2"
         dest: /etc/samba/smb.conf
         mode: "0644"
         validate: testparm -s %s

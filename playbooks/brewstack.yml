@@ -60,7 +60,7 @@
       ansible.builtin.copy:
         dest: /etc/systemd/system/shotrecorder.service
         content: |
-          # Managed by Ansible (brewstack.yml).
+          # Managed by Ansible (playbooks/brewstack.yml).
           [Unit]
           Description=Brewstack backend (shot recorder)
           Wants=network-online.target
@@ -103,7 +103,7 @@
 
     - name: Configure brewstack site
       ansible.builtin.template:
-        src: templates/brewstack-nginx.conf.j2
+        src: "{{ repo_root }}/templates/brewstack-nginx.conf.j2"
         dest: /etc/nginx/sites-available/brewstack
         mode: "0644"
       notify: Reload nginx

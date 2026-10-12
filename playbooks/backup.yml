@@ -72,7 +72,7 @@
 
     - name: Install backup metrics script
       ansible.builtin.template:
-        src: templates/vzdump-metrics.py.j2
+        src: "{{ repo_root }}/templates/vzdump-metrics.py.j2"
         dest: /usr/local/bin/vzdump-metrics
         mode: "0755"
 

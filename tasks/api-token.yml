@@ -22,7 +22,7 @@
 
 - name: Check for local token secret
   ansible.builtin.stat:
-    path: "{{ playbook_dir }}/secrets/{{ inventory_hostname }}-ansible-token.json"
+    path: "{{ repo_root }}/secrets/{{ inventory_hostname }}-ansible-token.json"
   delegate_to: localhost
   register: pve_token_file
 
@@ -47,7 +47,7 @@
 
 - name: Create local secrets dir
   ansible.builtin.file:
-    path: "{{ playbook_dir }}/secrets"
+    path: "{{ repo_root }}/secrets"
     state: directory
     mode: "0700"
   delegate_to: localhost
@@ -55,7 +55,7 @@
 
 - name: Save token secret locally
   ansible.builtin.copy:
-    dest: "{{ playbook_dir }}/secrets/{{ inventory_hostname }}-ansible-token.json"
+    dest: "{{ repo_root }}/secrets/{{ inventory_hostname }}-ansible-token.json"
     content: "{{ pve_new_token.stdout | from_json | to_nice_json }}"
     mode: "0600"
   delegate_to: localhost

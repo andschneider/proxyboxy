@@ -55,7 +55,7 @@
       ansible.builtin.copy:
         dest: /etc/apt/apt.conf.d/51unattended-upgrades-pgdg
         content: |
-          // Managed by Ansible (postgres.yml).
+          // Managed by Ansible (playbooks/postgres.yml).
           Unattended-Upgrade::Origins-Pattern {
               "origin=apt.postgresql.org,codename=${distro_codename}-pgdg";
           };
@@ -74,7 +74,7 @@
       ansible.builtin.copy:
         dest: "{{ postgres_conf_dir }}/conf.d/90-ansible.conf"
         content: |
-          # Managed by Ansible (postgres.yml).
+          # Managed by Ansible (playbooks/postgres.yml).
           {% for key, value in postgres_settings.items() %}
           {{ key }} = {{ value }}
           {% endfor %}
@@ -85,7 +85,7 @@
 
     - name: Configure client authentication
       ansible.builtin.template:
-        src: templates/pg_hba.conf.j2
+        src: "{{ repo_root }}/templates/pg_hba.conf.j2"
         dest: "{{ postgres_conf_dir }}/pg_hba.conf"
         owner: postgres
         group: postgres

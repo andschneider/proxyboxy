@@ -1,5 +1,5 @@
 ---
-# CI lints the current playbooks at the repo root.
+# CI lints playbooks/ and the shared Ansible configuration and tasks.
 exclude_paths:
   - terraform/
   - secrets/

@@ -1,4 +1,4 @@
-# Prometheus alert rules (monitoring.yml copies this to the monitor VM).
+# Prometheus alert rules (playbooks/monitoring.yml copies this to the monitor VM).
 # severity: critical repeats every 4h until fixed; warning once a day.
 # Thresholds here match the pr3 hardware and overview dashboards.
 groups:

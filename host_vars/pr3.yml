@@ -49,7 +49,7 @@ zfs_arc_max_gib: 16
 
 journald_max_use: 200M
 
-# Cloud-init template (template.yml), pinned to a dated build so the URL and
+# Cloud-init template (playbooks/template.yml), pinned to a dated build so the URL and
 # checksum always match. To move to a newer build: update the URL, name and
 # checksum (from that build's SHA256SUMS), then rebuild the template with
 # `qm destroy 9000 --purge` and `make pve-template`. Existing VMs are unaffected.
@@ -67,10 +67,10 @@ template_vendor_snippet: vendor-base.yaml
 pve_lab_bridge: vmbr1
 pve_lab_bridge_port: nic2
 
-# Prometheus PVE exporter (monitoring.yml), installed in a venv on pr3.
+# Prometheus PVE exporter (playbooks/monitoring.yml), installed in a venv on pr3.
 pve_exporter_version: 3.10.1
 
-# Nightly vzdump of every VM to the backup pool (backup.yml). Retention
+# Nightly vzdump of every VM to the backup pool (playbooks/backup.yml). Retention
 # comes from the backup storage's prune settings above. Disks with backup=0
 # (the files share) are skipped.
 pve_backup_job:

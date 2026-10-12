@@ -245,7 +245,7 @@
       ansible.builtin.copy:
         dest: /etc/default/prometheus-postgres-exporter
         content: |
-          # Managed by Ansible (monitoring.yml).
+          # Managed by Ansible (playbooks/monitoring.yml).
           DATA_SOURCE_NAME='host=/run/postgresql user=prometheus dbname=postgres'
           ARGS=''
         mode: "0644"
@@ -318,7 +318,7 @@
 
     - name: Install alert rules
       ansible.builtin.copy:
-        src: files/prometheus/alerts.yml
+        src: "{{ repo_root }}/files/prometheus/alerts.yml"
         dest: /etc/prometheus/rules/alerts.yml
         mode: "0644"
         validate: promtool check rules %s
@@ -326,7 +326,7 @@
 
     - name: Configure scrape targets
       ansible.builtin.template:
-        src: templates/prometheus.yml.j2
+        src: "{{ repo_root }}/templates/prometheus.yml.j2"
         dest: /etc/prometheus/prometheus.yml
         mode: "0644"
         validate: promtool check config %s
@@ -349,14 +349,14 @@
       ansible.builtin.copy:
         dest: /etc/default/prometheus-alertmanager
         content: |
-          # Managed by Ansible (monitoring.yml).
+          # Managed by Ansible (playbooks/monitoring.yml).
           ARGS="--web.listen-address=127.0.0.1:9093 --cluster.listen-address="
         mode: "0644"
       notify: Restart alertmanager
 
     - name: Configure Alertmanager
       ansible.builtin.template:
-        src: templates/alertmanager.yml.j2
+        src: "{{ repo_root }}/templates/alertmanager.yml.j2"
         dest: /etc/prometheus/alertmanager.yml
         owner: root
         group: prometheus
@@ -394,7 +394,7 @@
       ansible.builtin.copy:
         dest: /etc/apt/apt.conf.d/51unattended-upgrades-grafana
         content: |
-          // Managed by Ansible (monitoring.yml).
+          // Managed by Ansible (playbooks/monitoring.yml).
           Unattended-Upgrade::Origins-Pattern {
               "site=apt.grafana.com";
           };
@@ -409,7 +409,7 @@
       ansible.builtin.copy:
         dest: /etc/grafana/provisioning/datasources/prometheus.yml
         content: |
-          # Managed by Ansible (monitoring.yml).
+          # Managed by Ansible (playbooks/monitoring.yml).
           apiVersion: 1
           datasources:
             - name: Prometheus
@@ -436,7 +436,7 @@
       ansible.builtin.copy:
         dest: /etc/grafana/provisioning/dashboards/homelab.yml
         content: |
-          # Managed by Ansible (monitoring.yml).
+          # Managed by Ansible (playbooks/monitoring.yml).
           apiVersion: 1
           providers:
             - name: homelab
@@ -509,7 +509,7 @@
         owner: root
         group: grafana
         mode: "0640"
-      with_fileglob: "{{ playbook_dir }}/files/grafana-dashboards/*.json"
+      with_fileglob: "{{ repo_root }}/files/grafana-dashboards/*.json"
       loop_control:
         label: "{{ item | basename }}"
 

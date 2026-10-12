@@ -3,6 +3,12 @@
 Automation for the current Proxmox homelab: Terraform manages VMs and Ansible
 configures the host and services. Run commands from the repository root.
 
+Playbooks live in `playbooks/`; inventories and collection requirements stay at
+the root. Shared tasks, templates, files, and host variables have their own
+directories. The Makefile runs each playbook with the appropriate inventory.
+`group_vars/all.yml` defines `repo_root` from the inventory directory, anchoring
+shared resource paths independently of the playbook location.
+
 ## Tooling
 
 Ansible and `ansible-lint` are pinned in `pyproject.toml` / `uv.lock` and run through
@@ -61,7 +67,7 @@ What it does:
 Run only some parts with tags:
 
 ```bash
-ansible-playbook -i inventory.yml post-install.yml --ask-pass --tags zfs,storage
+ansible-playbook -i inventory.yml playbooks/post-install.yml --ask-pass --tags zfs,storage
 ```
 
 ## VMs

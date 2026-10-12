@@ -22,29 +22,29 @@
 
   tasks:
     - name: Repositories and upgrade
-      ansible.builtin.import_tasks: tasks/repos.yml
+      ansible.builtin.import_tasks: ../tasks/repos.yml
       tags: [repos]
 
     - name: Lab network bridge
-      ansible.builtin.import_tasks: tasks/network.yml
+      ansible.builtin.import_tasks: ../tasks/network.yml
       tags: [network]
 
     - name: Reduce writes on the boot SSD
-      ansible.builtin.import_tasks: tasks/writes.yml
+      ansible.builtin.import_tasks: ../tasks/writes.yml
       tags: [writes]
 
     - name: ZFS pools
-      ansible.builtin.import_tasks: tasks/zfs.yml
+      ansible.builtin.import_tasks: ../tasks/zfs.yml
       tags: [zfs]
 
     - name: PVE storage
-      ansible.builtin.import_tasks: tasks/storage.yml
+      ansible.builtin.import_tasks: ../tasks/storage.yml
       tags: [storage]
 
     - name: SMART monitoring
-      ansible.builtin.import_tasks: tasks/smart.yml
+      ansible.builtin.import_tasks: ../tasks/smart.yml
       tags: [smart]
 
     - name: Ansible API token
-      ansible.builtin.import_tasks: tasks/api-token.yml
+      ansible.builtin.import_tasks: ../tasks/api-token.yml
       tags: [token]

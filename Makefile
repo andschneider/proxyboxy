@@ -8,12 +8,12 @@ lint:
 ###           PVE           ###
 ###############################
 .PHONY: pve-post
-pve-post: inventory.yml post-install.yml
-	uv run ansible-playbook -i inventory.yml post-install.yml --ask-pass -v
+pve-post: inventory.yml playbooks/post-install.yml
+	uv run ansible-playbook -i inventory.yml playbooks/post-install.yml --ask-pass -v
 
 .PHONY: pve-template
-pve-template: inventory.yml template.yml
-	uv run ansible-playbook -i inventory.yml template.yml --ask-pass -v
+pve-template: inventory.yml playbooks/template.yml
+	uv run ansible-playbook -i inventory.yml playbooks/template.yml --ask-pass -v
 
 ###############################
 ###           Lab           ###
@@ -25,24 +25,24 @@ postgres monitoring files brewstack: export ANSIBLE_INVENTORY_UNPARSED_FAILED = 
 
 # Prompts for the vault password only once a host has a vault.yml.
 .PHONY: postgres
-postgres: inventory.yml postgres.yml
-	uv run ansible-playbook $(LAB_INVENTORY) postgres.yml -v \
+postgres: inventory.yml playbooks/postgres.yml
+	uv run ansible-playbook $(LAB_INVENTORY) playbooks/postgres.yml -v \
 		$(if $(wildcard host_vars/postgres/vault.yml),--ask-vault-pass)
 
 # --ask-pass is for root on pr3; lab VMs use the SSH key.
 .PHONY: monitoring
-monitoring: inventory.yml monitoring.yml
-	uv run ansible-playbook $(LAB_INVENTORY) monitoring.yml --ask-pass -v \
+monitoring: inventory.yml playbooks/monitoring.yml
+	uv run ansible-playbook $(LAB_INVENTORY) playbooks/monitoring.yml --ask-pass -v \
 		$(if $(wildcard host_vars/*/vault.yml),--ask-vault-pass)
 
 .PHONY: files
-files: inventory.yml files.yml
-	uv run ansible-playbook $(LAB_INVENTORY) files.yml --ask-vault-pass -v
+files: inventory.yml playbooks/files.yml
+	uv run ansible-playbook $(LAB_INVENTORY) playbooks/files.yml --ask-vault-pass -v
 
 .PHONY: brewstack
-brewstack: inventory.yml brewstack.yml
-	uv run ansible-playbook $(LAB_INVENTORY) brewstack.yml -v
+brewstack: inventory.yml playbooks/brewstack.yml
+	uv run ansible-playbook $(LAB_INVENTORY) playbooks/brewstack.yml -v
 
 .PHONY: pve-backup
-pve-backup: inventory.yml backup.yml
-	uv run ansible-playbook -i inventory.yml backup.yml --ask-pass -v
+pve-backup: inventory.yml playbooks/backup.yml
+	uv run ansible-playbook -i inventory.yml playbooks/backup.yml --ask-pass -v

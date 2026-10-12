@@ -26,5 +26,9 @@ postgres_settings:
 #   postgres_databases:
 #     - name: myapp
 #       owner: myapp
-postgres_roles: []
-postgres_databases: []
+postgres_roles:
+  - name: agentsview
+    password: "{{ vault_postgres_agentsview_password }}"
+postgres_databases:
+  - name: agentsview
+    owner: agentsview

@@ -52,7 +52,7 @@ resource "proxmox_virtual_environment_vm" "files" {
     ssd          = true
   }
 
-  # The share (files.yml finds it by its scsi1 by-id name). Left out of
+  # The share (playbooks/files.yml finds it by its scsi1 by-id name). Left out of
   # vzdump backups for now.
   disk {
     datastore_id = "tank"
